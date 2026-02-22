@@ -233,8 +233,8 @@ function App() {
           id: `delete-${Date.now()}`,
           type: 'task_delete',
           description: `Deleted "${task.title}"`,
-          undo: async () => store.addTask(task as any),
-          redo: async () => store.deleteTask(taskId),
+          undo: async () => { await store.addTask(task as any); },
+          redo: async () => { await store.deleteTask(taskId); },
           timestamp: new Date()
         });
       }

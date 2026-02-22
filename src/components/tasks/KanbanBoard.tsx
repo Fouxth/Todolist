@@ -122,7 +122,7 @@ export function KanbanBoard({
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-      {columns.map((column, columnIndex) => {
+      {columns.map((column, _columnIndex) => {
         const columnTasks = getTasksByStatus(column.id);
         const isDragOver = dragOverColumn === column.id;
         const columnTitle = t.kanban[column.titleKey];

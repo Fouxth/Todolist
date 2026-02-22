@@ -12,13 +12,12 @@ function getAuthToken(): string | null {
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getAuthToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) baseHeaders['Authorization'] = `Bearer ${token}`;
+  const mergedHeaders = { ...baseHeaders, ...(options?.headers as Record<string, string> | undefined) };
   const res = await fetch(`${API_BASE}${path}`, {
-    headers,
     ...options,
-    // Merge headers from options with auth headers
-    ...(options?.headers ? { headers: { ...headers, ...(options.headers as Record<string, string>) } } : { headers })
+    headers: mergedHeaders
   });
   if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
   return res.json();

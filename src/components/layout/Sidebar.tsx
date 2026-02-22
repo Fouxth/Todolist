@@ -31,7 +31,7 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
-export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle }: SidebarProps) {
+export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle: _onToggle }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { t, lang, toggleLang } = useLanguage();
   const { theme, setTheme } = useTheme();

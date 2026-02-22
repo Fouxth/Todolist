@@ -30,7 +30,13 @@ const PORT = process.env.PORT || 3001;
 // Socket.io
 const io = new SocketIOServer(httpServer, {
     cors: {
-        origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173'],
+        origin: [
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:4173',
+            'https://dxv4th.vercel.app',
+            /\.vercel\.app$/
+        ],
         credentials: true
     }
 });
@@ -70,7 +76,13 @@ const apiLimiter = rateLimit({ windowMs: 1 * 60 * 1000, max: 200 });
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173'],
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:4173',
+        'https://dxv4th.vercel.app',
+        /\.vercel\.app$/
+    ],
     credentials: true
 }));
 app.use(express.json());

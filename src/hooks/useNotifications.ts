@@ -44,7 +44,8 @@ export function useNotifications({ token }: UseNotificationsOptions) {
     useEffect(() => {
         if (!token) return;
 
-        const socket = io('/', {
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || '/';
+        const socket = io(socketUrl, {
             auth: { token },
             transports: ['websocket', 'polling']
         });

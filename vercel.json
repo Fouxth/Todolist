@@ -5,11 +5,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend-url.com/api/:path*"
+      "destination": "http://103.142.150.196:3001/api/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "https://your-backend-url.com/uploads/:path*"
+      "destination": "http://103.142.150.196:3001/uploads/:path*"
     }
   ]
 }

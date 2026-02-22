@@ -1,0 +1,544 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  /* ===== Shared tokens ===== */
+  :root {
+    --radius: 0.75rem;
+    --orange: #ff6b35;
+    --orange-glow: rgba(255, 107, 53, 0.4);
+    --blue: #2196f3;
+    --blue-glow: rgba(33, 150, 243, 0.3);
+    --green: #4caf50;
+    --yellow: #ffc107;
+    --red: #f44336;
+    --neon-cyan: #00d4ff;
+    --neon-purple: #9d4edd;
+    --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-expo-in: cubic-bezier(0.7, 0, 0.84, 0);
+    --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  /* ===== Dark Theme (default) ===== */
+  .dark {
+    --background: 0 0% 6%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 17 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 69%;
+    --accent: 17 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 17 100% 60%;
+    --sidebar-bg: #111111;
+    --glass-bg: rgba(26, 26, 26, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --card-glow: rgba(0, 0, 0, 0.4);
+  }
+
+  /* ===== Light Theme ===== */
+  .light {
+    --background: 220 20% 97%;
+    --foreground: 220 15% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 10%;
+    --primary: 17 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 93%;
+    --secondary-foreground: 220 15% 20%;
+    --muted: 220 15% 93%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 17 100% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 90% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 17 100% 55%;
+    --sidebar-bg: #ffffff;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --card-glow: rgba(0, 0, 0, 0.08);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  code,
+  pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+
+  /* Glassmorphism */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    @apply backdrop-blur-xl;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300;
+    transition-timing-function: var(--ease-expo-out);
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-2;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+      0 0 20px var(--orange-glow);
+  }
+
+  /* Glow effects */
+  .glow-orange {
+    box-shadow: 0 0 20px var(--orange-glow),
+      0 0 40px rgba(255, 107, 53, 0.2);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px var(--blue-glow),
+      0 0 40px rgba(33, 150, 243, 0.2);
+  }
+
+  /* Status indicators */
+  .status-online {
+    @apply bg-green-500;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+  }
+
+  .status-busy {
+    @apply bg-red-500;
+  }
+
+  .status-away {
+    @apply bg-yellow-500;
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+
+  .status-offline {
+    @apply bg-gray-500;
+  }
+
+  /* Priority badges */
+  .priority-urgent {
+    @apply bg-red-500/20 text-red-400 border-red-500/30;
+  }
+
+  .priority-high {
+    @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
+  }
+
+  .priority-medium {
+    @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+  }
+
+  .priority-low {
+    @apply bg-green-500/20 text-green-400 border-green-500/30;
+  }
+
+  /* Task status columns */
+  .column-todo {
+    @apply border-t-4 border-gray-500;
+  }
+
+  .column-in-progress {
+    @apply border-t-4 border-[var(--orange)];
+  }
+
+  .column-review {
+    @apply border-t-4 border-[var(--blue)];
+  }
+
+  .column-done {
+    @apply border-t-4 border-green-500;
+  }
+
+  /* Animated border gradient */
+  .border-gradient {
+    position: relative;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(33, 150, 243, 0.3));
+    background-size: 200% 200%;
+    animation: gradient-rotate 8s ease infinite;
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/20;
+  }
+}
+
+@layer utilities {
+
+  /* Animation keyframes */
+  @keyframes pulse-slow {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes gradient-rotate {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes glow-pulse {
+
+    0%,
+    100% {
+      box-shadow: 0 0 20px var(--orange-glow);
+    }
+
+    50% {
+      box-shadow: 0 0 40px var(--orange-glow), 0 0 60px rgba(255, 107, 53, 0.3);
+    }
+  }
+
+  /* Animation utilities */
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.5s var(--ease-expo-out) forwards;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s var(--ease-spring) forwards;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Perspective for 3D effects */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--orange), var(--neon-cyan));
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================== */
+
+/* Safe area for bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile kanban: horizontal scroll */
+@media (max-width: 1023px) {
+  .flex.gap-4.overflow-x-auto {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .flex.gap-4.overflow-x-auto > div {
+    scroll-snap-align: start;
+    min-width: 280px;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 640px) {
+  /* Smaller calendar cells on mobile */
+  .grid-cols-7 > div,
+  .grid-cols-7 > button {
+    min-height: 60px !important;
+    padding: 4px !important;
+    font-size: 0.75rem;
+  }
+
+  /* Stack stats cards */
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==============================================
+   LIGHT MODE OVERRIDES
+   Remaps hardcoded dark Tailwind classes to
+   light equivalents without touching components
+   ============================================== */
+
+/* ---- Body & Root ---- */
+.light body {
+  background-color: #f0f2f5 !important;
+  color: #111827 !important;
+}
+
+/* ---- Sidebar ---- */
+.light aside {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+/* ---- Hardcoded dark backgrounds ---- */
+.light .bg-\[\#0a0a0a\],
+.light .bg-\[\#0f0f0f\],
+.light .bg-\[\#111\],
+.light .bg-\[\#111111\],
+.light .bg-\[\#1a1a1a\],
+.light .bg-\[\#161616\],
+.light .\[\&\:not\(\:first-child\)\]\:bg-\[\#1a1a1a\] {
+  background-color: #ffffff !important;
+}
+
+/* Login page specific */
+.light .min-h-screen.bg-\[\#0a0a0a\] {
+  background-color: #f0f2f5 !important;
+}
+
+/* Cards and panels that use rgba dark */
+.light [class*="bg-[rgba(26"],
+.light [class*="bg-[rgba(15"],
+.light [class*="bg-[rgba(17"] {
+  background-color: #ffffff !important;
+}
+
+/* ---- Text colors ---- */
+.light .text-white {
+  color: #111827 !important;
+}
+
+.light .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.light .text-gray-300 {
+  color: #374151 !important;
+}
+
+.light .text-gray-500 {
+  color: #4b5563 !important;
+}
+
+/* ---- Borders ---- */
+.light .border-white\/5,
+.light .border-white\/10,
+.light .border-white\/\[0\.05\] {
+  border-color: #e5e7eb !important;
+}
+
+/* ---- White opacity backgrounds (hover/active) ---- */
+.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+.light .bg-white\/20 {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ---- Hover states ---- */
+.light .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.light .hover\:text-white:hover {
+  color: #111827 !important;
+}
+
+.light .group:hover .group-hover\:text-white {
+  color: #111827 !important;
+}
+
+/* ---- Active nav item ---- */
+.light .bg-\[rgba\(255\,107\,53\,0\.15\)\] {
+  background-color: rgba(255, 107, 53, 0.12) !important;
+}
+
+/* ---- Kanban columns ---- */
+.light .bg-\[\#0f0f0f\]\/50,
+.light .bg-black\/20,
+.light .bg-black\/30,
+.light .bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ---- Input fields ---- */
+.light input,
+.light textarea,
+.light select {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+/* ---- Modals / Dialogs ---- */
+.light [role="dialog"],
+.light [data-radix-popper-content-wrapper]>div {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* ---- Dropdown menus ---- */
+.light [role="menu"],
+.light [role="listbox"] {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+.light [role="menuitem"],
+.light [role="option"] {
+  color: #111827 !important;
+}
+
+.light [role="menuitem"]:hover,
+.light [role="option"]:hover {
+  background-color: #f3f4f6 !important;
+}
+
+/* ---- Ring (focus) color in light mode ---- */
+.light .ring-white\/10 {
+  --tw-ring-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ---- Status border on user avatar ---- */
+.light .border-\[\#1a1a1a\] {
+  border-color: #ffffff !important;
+}
+
+/* ---- Scrollbar ---- */
+.light ::-webkit-scrollbar-track {
+  background: #f0f2f5;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ---- Collapse button border ---- */
+.light aside .border-white\/5 {
+  border-color: #e5e7eb !important;
+}

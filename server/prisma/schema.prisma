@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ Users ============
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String   @default("")
+  avatar      String   @default("")
+  role        String   @default("developer") // admin, developer, designer, tester, manager
+  status      String   @default("online")    // online, busy, away, offline
+  currentTask String?
+  department  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  taskAssignees  TaskAssignee[]
+  createdTasks   Task[]          @relation("TaskCreator")
+  comments       Comment[]
+  attachments    Attachment[]
+  timeEntries    TimeEntry[]
+  calendarEvents CalendarEvent[]
+  activities     Activity[]
+  teamMembers    TeamMember[]
+  notifications  Notification[]
+}
+
+// ============ Notifications ============
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // task_assigned, task_completed, task_created, comment, mention, due_soon
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?  // e.g. task ID to navigate to
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+// ============ Projects ============
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String    @default("")
+  status      String    @default("active") // active, completed, on-hold, cancelled
+  progress    Int       @default(0)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  color       String    @default("#ff6b35")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  teams          Team[]
+  tasks          Task[]
+  sprints        Sprint[]
+  calendarEvents CalendarEvent[]
+}
+
+// ============ Sprints ============
+model Sprint {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  projectId   String
+  status      String   @default("planning") // planning, active, completed
+  goal        String   @default("")
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+}
+
+// ============ Teams ============
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  projectId   String
+  color       String   @default("#2196f3")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+  tasks   Task[]
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  userId   String
+  teamId   String
+  role     String   @default("member") // lead, member
+  joinedAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+// ============ Tasks ============
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @default("")
+  status      String    @default("todo") // todo, in-progress, review, done
+  priority    String    @default("medium") // low, medium, high, urgent
+  projectId   String
+  teamId      String?
+  sprintId    String?
+  createdBy   String
+  dueDate     DateTime?
+  completedAt DateTime?
+  recurring   Json?     // { enabled, interval: daily|weekly|monthly|custom, customDays?, nextRun }
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team           Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  sprint         Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  creator        User             @relation("TaskCreator", fields: [createdBy], references: [id])
+  assignees      TaskAssignee[]
+  tags           TaskTag[]
+  subtasks       Subtask[]
+  comments       Comment[]
+  attachments    Attachment[]
+  timeTracking   TimeTracking?
+  calendarEvents CalendarEvent[]
+  dependencies   TaskDependency[] @relation("TaskDependencies")
+  dependedOnBy   TaskDependency[] @relation("TaskDependedOn")
+
+  @@index([status])
+  @@index([projectId])
+  @@index([sprintId])
+  @@index([createdBy])
+  @@index([priority])
+}
+
+model TaskDependency {
+  id          String @id @default(cuid())
+  taskId      String
+  dependsOnId String
+  type        String @default("blocks") // blocks, related
+
+  task      Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn Task @relation("TaskDependedOn", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+}
+
+model TaskAssignee {
+  id     String @id @default(cuid())
+  taskId String
+  userId String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model TaskTag {
+  id     String @id @default(cuid())
+  taskId String
+  tag    String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tag])
+}
+
+model Subtask {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  taskId     String
+  name       String
+  url        String
+  type       String
+  size       Int
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [uploadedBy], references: [id])
+}
+
+// ============ Time Tracking ============
+model TimeTracking {
+  id        String @id @default(cuid())
+  taskId    String @unique
+  estimated Int    @default(0) // in minutes
+  spent     Int    @default(0) // in minutes
+
+  task    Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  entries TimeEntry[]
+}
+
+model TimeEntry {
+  id             String    @id @default(cuid())
+  timeTrackingId String
+  userId         String
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  duration       Int       @default(0) // in minutes
+  description    String?
+
+  timeTracking TimeTracking @relation(fields: [timeTrackingId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+}
+
+// ============ Calendar ============
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  type        String   @default("task") // task, meeting, deadline, reminder
+  userId      String
+  projectId   String?
+  taskId      String?
+  color       String?
+  createdAt   DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+}
+
+// ============ Activity ============
+model Activity {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // created, updated, deleted, assigned, completed, commented, started, paused
+  targetType String   // task, project, team
+  targetId   String
+  targetName String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

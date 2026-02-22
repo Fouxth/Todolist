@@ -97,7 +97,7 @@ npm install
 สร้างไฟล์ `server/.env` :
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/devteam?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/todolist"
 JWT_SECRET="your-secret-key-change-this"
 ```
 

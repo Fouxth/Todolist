@@ -21,15 +21,16 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
     // Keep ref in sync
     useEffect(() => { activeChatIdRef.current = activeChatId; }, [activeChatId]);
 
+    // Auto-compute totalUnread whenever chats state changes (realtime)
+    useEffect(() => {
+        setTotalUnread(chats.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0));
+    }, [chats]);
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
     const authHeader = useCallback(() => ({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
     }), [token]);
-
-    const computeTotal = useCallback((list: Chat[]) => {
-        setTotalUnread(list.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0));
-    }, []);
 
     // ─── Fetch chats list ─────────────────────────────────────────────────────
     const fetchChats = useCallback(async () => {
@@ -40,7 +41,6 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
             if (res.ok) {
                 const data: Chat[] = await res.json();
                 setChats(data);
-                computeTotal(data);
                 // Join all chat rooms so realtime messages are received
                 if (socketRef.current?.connected) {
                     data.forEach(c => socketRef.current!.emit('chat:join', c.id));
@@ -51,7 +51,7 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
         } finally {
             setLoading(false);
         }
-    }, [token, authHeader, computeTotal]);
+    }, [token, authHeader]);
 
     // ─── Fetch messages for a chat ────────────────────────────────────────────
     const fetchMessages = useCallback(async (chatId: string, before?: string) => {
@@ -259,11 +259,9 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
                         unreadCount: (isActive || isOwn) ? 0 : (c.unreadCount ?? 0) + 1
                     };
                 });
-                const sorted = [...updated].sort(
+                return [...updated].sort(
                     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
                 );
-                computeTotal(sorted);
-                return sorted;
             });
         });
 

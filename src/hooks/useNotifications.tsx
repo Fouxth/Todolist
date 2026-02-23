@@ -121,13 +121,12 @@ export function useNotifications({ token, prefs, onNotification }: UseNotificati
     useEffect(() => {
         if (!token) return;
 
-        // Always use relative URL so requests go through Vercel proxy (avoids mixed-content block)
-        const socketUrl = typeof window !== 'undefined' && window.location.protocol === 'https:'
-            ? window.location.origin
-            : (import.meta.env.VITE_SOCKET_URL || '/');
+        // VITE_SOCKET_URL should be set to https://103.142.150.196 in Vercel env vars
+        // Falls back to same origin (goes through Vercel proxy) for local dev
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
         const socket = io(socketUrl, {
             auth: { token },
-            transports: ['polling'],
+            transports: ['websocket', 'polling'],
             path: '/socket.io'
         });
 

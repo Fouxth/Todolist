@@ -214,7 +214,8 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
         const url = import.meta.env.VITE_SOCKET_URL || '/';
         const socket = io(url, {
             auth: { token },
-            transports: ['websocket', 'polling']
+            transports: ['polling'],
+            path: '/socket.io'
         });
         socketRef.current = socket;
 

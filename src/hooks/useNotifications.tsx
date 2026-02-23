@@ -124,7 +124,8 @@ export function useNotifications({ token, prefs, onNotification }: UseNotificati
         const socketUrl = import.meta.env.VITE_SOCKET_URL || '/';
         const socket = io(socketUrl, {
             auth: { token },
-            transports: ['websocket', 'polling']
+            transports: ['polling'],
+            path: '/socket.io'
         });
 
         socket.on('connect', () => {

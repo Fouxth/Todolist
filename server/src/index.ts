@@ -75,8 +75,17 @@ io.on('connection', (socket) => {
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
 // Rate limiting for auth routes
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Too many requests, please try again later' } });
-const apiLimiter = rateLimit({ windowMs: 1 * 60 * 1000, max: 200 });
+const authLimiter = rateLimit({ 
+    windowMs: 15 * 60 * 1000, 
+    max: 20, 
+    message: { error: 'Too many requests, please try again later' },
+    trustProxy: true 
+});
+const apiLimiter = rateLimit({ 
+    windowMs: 1 * 60 * 1000, 
+    max: 200,
+    trustProxy: true 
+});
 
 // Middleware
 app.use(cors({

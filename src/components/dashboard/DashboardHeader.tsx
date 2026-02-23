@@ -16,7 +16,6 @@ interface DashboardHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   notifications: Notification[];
-  unreadCount: number;
   onMarkAsRead: (id: string) => void;
   onMarkAllRead: () => void;
   onDeleteNotification: (id: string) => void;
@@ -33,7 +32,6 @@ export function DashboardHeader({
   searchQuery,
   onSearchChange,
   notifications,
-  unreadCount,
   onMarkAsRead,
   onMarkAllRead,
   onDeleteNotification,

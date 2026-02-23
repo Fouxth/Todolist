@@ -604,7 +604,6 @@ function App() {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               notifications={notifications}
-              unreadCount={unreadCount}
               onMarkAsRead={markAsRead}
               onMarkAllRead={markAllRead}
               onDeleteNotification={deleteNotification}

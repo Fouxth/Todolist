@@ -5,7 +5,6 @@ import { useLanguage } from '@/i18n/LanguageContext';
 
 interface NotificationPanelProps {
     notifications: Notification[];
-    unreadCount: number;
     onMarkAsRead: (id: string) => void;
     onMarkAllRead: () => void;
     onDelete: (id: string) => void;
@@ -23,7 +22,6 @@ const TYPE_CONFIG: Record<string, { icon: typeof Bell; color: string; bg: string
 
 export function NotificationPanel({
     notifications,
-    unreadCount,
     onMarkAsRead,
     onMarkAllRead,
     onDelete,

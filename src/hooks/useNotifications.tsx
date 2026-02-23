@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
-import { Bell, Calendar, CheckCircle, MessageSquare, UserPlus, AlertCircle } from 'lucide-react';
+import { Bell, CheckCircle, MessageSquare, UserPlus, AlertCircle } from 'lucide-react';
 
 export interface Notification {
     id: string;

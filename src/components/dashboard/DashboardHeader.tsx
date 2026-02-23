@@ -128,7 +128,6 @@ export function DashboardHeader({
           {/* Notifications */}
           <NotificationPanel
             notifications={notifications}
-            unreadCount={unreadCount}
             onMarkAsRead={onMarkAsRead}
             onMarkAllRead={onMarkAllRead}
             onDelete={onDeleteNotification}

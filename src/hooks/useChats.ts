@@ -211,12 +211,11 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
     useEffect(() => {
         if (!token) return;
 
-        // VITE_SOCKET_URL should be set to https://103.142.150.196 in Vercel env vars
-        // Falls back to same origin (goes through Vercel proxy) for local dev
+        // Use VITE_SOCKET_URL if set (direct HTTPS server), otherwise use same origin through Vercel proxy
         const url = import.meta.env.VITE_SOCKET_URL || window.location.origin;
         const socket = io(url, {
             auth: { token },
-            transports: ['websocket', 'polling'],
+            transports: ['polling'],
             path: '/socket.io'
         });
         socketRef.current = socket;

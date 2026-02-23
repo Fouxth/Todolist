@@ -67,6 +67,13 @@ function App() {
   const { pushAction, undo, redo, canUndo, canRedo } = useUndoRedo();
   const { registerShortcut, setShowDialog: setShowShortcuts } = useKeyboardShortcuts();
 
+  // Reload store data when user logs in
+  useEffect(() => {
+    if (authUser && token) {
+      store.retry();
+    }
+  }, [authUser, token]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Register keyboard shortcuts
   useEffect(() => {
     registerShortcut({ key: 'n', description: 'New task', category: 'Tasks', action: () => handleCreateTask() });

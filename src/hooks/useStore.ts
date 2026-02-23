@@ -49,6 +49,13 @@ export const useStore = () => {
 
   // Load all data from API on mount
   const loadData = useCallback(async () => {
+    // Don't load if no token
+    const token = getAuthToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
@@ -100,7 +107,23 @@ export const useStore = () => {
       }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Load data when component mounts or when auth token changes
+  useEffect(() => { 
+    const token = getAuthToken();
+    if (token) {
+      loadData();
+    }
+    
+    // Listen for storage changes (when token is set after login)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token' && e.newValue) {
+        loadData();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [loadData]);
 
   // Refresh helpers
   const refreshTasks = useCallback(async () => {

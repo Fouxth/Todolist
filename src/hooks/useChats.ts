@@ -41,6 +41,10 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
                 const data: Chat[] = await res.json();
                 setChats(data);
                 computeTotal(data);
+                // Join all chat rooms so realtime messages are received
+                if (socketRef.current?.connected) {
+                    data.forEach(c => socketRef.current!.emit('chat:join', c.id));
+                }
             }
         } catch (err) {
             console.error('Failed to fetch chats', err);
@@ -218,6 +222,14 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
             path: '/socket.io'
         });
         socketRef.current = socket;
+
+        // Auto-join all chat rooms so user receives messages without opening chat first
+        socket.on('connect', () => {
+            setChats(prev => {
+                prev.forEach(c => socket.emit('chat:join', c.id));
+                return prev;
+            });
+        });
 
         socket.on('chat:message', (msg: ChatMessage) => {
             setMessages(prev => ({

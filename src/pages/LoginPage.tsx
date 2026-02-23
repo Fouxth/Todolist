@@ -38,8 +38,6 @@ export function LoginPage() {
         }
     };
 
-    const quickLogin = (em: string) => { setEmail(em); setPassword('password123'); setMode('login'); };
-
     return (
         <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 relative overflow-hidden">
             {/* Animated background blobs */}
@@ -211,32 +209,7 @@ export function LoginPage() {
                         </button>
                     </form>
 
-                    {/* Confirm password (register only) */}
-                    {mode === 'register' ? null : (
-                        <>
-                            {/* Quick login hints */}
-                            <div className="mt-6 pt-6 border-t border-white/5">
-                                <p className="text-xs text-gray-500 text-center mb-3">{t.login.testAccounts}</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {[
-                                        { name: 'สมชาย (Admin)', email: 'somchai@devteam.com' },
-                                        { name: 'ปริญญา (Manager)', email: 'parinya@devteam.com' },
-                                        { name: 'วิชัย (Dev)', email: 'wichai@devteam.com' },
-                                        { name: 'สุภาพร (Design)', email: 'supaporn@devteam.com' },
-                                    ].map(u => (
-                                        <button
-                                            key={u.email}
-                                            type="button"
-                                            onClick={() => quickLogin(u.email)}
-                                            className="text-xs bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg px-3 py-2 text-gray-400 hover:text-white transition-all text-left truncate"
-                                        >
-                                            {u.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    )}
+
 
                     {/* Switch mode link */}
                     <div className="mt-4 text-center">

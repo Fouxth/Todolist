@@ -384,7 +384,6 @@ const th = {
         submit: 'เข้าสู่ระบบ',
         loading: 'กำลังเข้าสู่ระบบ...',
         error: 'เกิดข้อผิดพลาด',
-        testAccounts: 'บัญชีทดลองใช้ (password: password123)',
         loadingData: 'กำลังโหลดข้อมูล...',
         registerTab: 'สมัครสมาชิก',
         loginTab: 'เข้าสู่ระบบ',

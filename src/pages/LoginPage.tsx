@@ -53,7 +53,7 @@ export function LoginPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-[#ff8c42] shadow-lg shadow-orange-500/30 mb-4">
                         <Code2 className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white">DevTeam</h1>
+                    <h1 className="text-3xl font-bold text-white">Dxv4TH</h1>
                     <p className="text-gray-400 mt-1 text-sm">{t.login.subtitle}</p>
                 </div>
 
@@ -108,7 +108,7 @@ export function LoginPage() {
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                     required
-                                    placeholder="email@devteam.com"
+                                    placeholder="email@Dxv4TH.com"
                                     className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-[#ff6b35] transition-colors"
                                 />
                             </div>

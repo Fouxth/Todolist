@@ -35,6 +35,7 @@ export function SprintBoard({
   const { t } = useLanguage();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showAddTasks, setShowAddTasks] = useState<string | null>(null);
+  const [sprintErrors, setSprintErrors] = useState<{ name?: boolean; projectId?: boolean }>({});
   const [newSprint, setNewSprint] = useState({
     name: '', description: '', projectId: '', goal: '',
     startDate: format(new Date(), 'yyyy-MM-dd'),
@@ -60,13 +61,16 @@ export function SprintBoard({
   );
 
   const handleCreateSprint = () => {
-    if (!newSprint.name || !newSprint.projectId) return;
+    const errors = { name: !newSprint.name.trim(), projectId: !newSprint.projectId };
+    setSprintErrors(errors);
+    if (errors.name || errors.projectId) return;
     onCreateSprint({
       ...newSprint,
       startDate: new Date(newSprint.startDate),
       endDate: new Date(newSprint.endDate),
       status: 'planning'
     });
+    setSprintErrors({});
     setNewSprint({
       name: '', description: '', projectId: '', goal: '',
       startDate: format(new Date(), 'yyyy-MM-dd'),
@@ -287,56 +291,64 @@ export function SprintBoard({
 
       {/* Create Sprint Form */}
       {showCreateForm && (
-        <div className="bg-[#111] border border-white/10 rounded-xl p-6 space-y-4 animate-slide-in">
-          <h3 className="text-white font-semibold">{t.sprint?.createSprint || 'Create Sprint'}</h3>
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4 animate-slide-in">
+          <h3 className="text-foreground font-semibold">{t.sprint?.createSprint || 'Create Sprint'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t.sprint?.sprintName || 'Sprint Name'}</label>
+              <label className="block text-sm text-muted-foreground mb-1">{t.sprint?.sprintName || 'Sprint Name'}</label>
               <input
                 value={newSprint.name}
-                onChange={e => setNewSprint(prev => ({ ...prev, name: e.target.value }))}
+                onChange={e => { setNewSprint(prev => ({ ...prev, name: e.target.value })); setSprintErrors(prev => ({ ...prev, name: false })); }}
                 placeholder="Sprint 1"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                className={cn(
+                  'w-full bg-muted border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none',
+                  sprintErrors.name ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-[#ff6b35]'
+                )}
               />
+              {sprintErrors.name && <p className="text-xs text-red-500 mt-1">กรุณากรอกชื่อสปรินท์</p>}
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t.modal?.project || 'Project'}</label>
+              <label className="block text-sm text-muted-foreground mb-1">{t.modal?.project || 'Project'} <span className="text-red-500">*</span></label>
               <select
                 value={newSprint.projectId}
-                onChange={e => setNewSprint(prev => ({ ...prev, projectId: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                onChange={e => { setNewSprint(prev => ({ ...prev, projectId: e.target.value })); setSprintErrors(prev => ({ ...prev, projectId: false })); }}
+                className={cn(
+                  'w-full bg-muted border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none',
+                  sprintErrors.projectId ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-[#ff6b35]'
+                )}
               >
-                <option value="" className="bg-[#1a1a1a]">{t.modal?.selectProject || 'Select project'}</option>
+                <option value="">{t.modal?.selectProject || 'Select project'}</option>
                 {projects.map(p => (
-                  <option key={p.id} value={p.id} className="bg-[#1a1a1a]">{p.name}</option>
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
+              {sprintErrors.projectId && <p className="text-xs text-red-500 mt-1">กรุณาเลือกโปรเจกต์</p>}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-1">{t.sprint?.goal || 'Sprint Goal'}</label>
+              <label className="block text-sm text-muted-foreground mb-1">{t.sprint?.goal || 'Sprint Goal'}</label>
               <input
                 value={newSprint.goal}
                 onChange={e => setNewSprint(prev => ({ ...prev, goal: e.target.value }))}
                 placeholder={t.sprint?.goalPlaceholder || 'What do you aim to accomplish?'}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-[#ff6b35] placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t.sprint?.startDate || 'Start Date'}</label>
+              <label className="block text-sm text-muted-foreground mb-1">{t.sprint?.startDate || 'Start Date'}</label>
               <input
                 type="date"
                 value={newSprint.startDate}
                 onChange={e => setNewSprint(prev => ({ ...prev, startDate: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-[#ff6b35]"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t.sprint?.endDate || 'End Date'}</label>
+              <label className="block text-sm text-muted-foreground mb-1">{t.sprint?.endDate || 'End Date'}</label>
               <input
                 type="date"
                 value={newSprint.endDate}
                 onChange={e => setNewSprint(prev => ({ ...prev, endDate: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                className="w-full bg-muted border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-[#ff6b35]"
               />
             </div>
           </div>
@@ -348,8 +360,8 @@ export function SprintBoard({
               {t.sprint?.create || 'Create'}
             </button>
             <button
-              onClick={() => setShowCreateForm(false)}
-              className="px-5 py-2.5 rounded-lg border border-white/10 text-gray-400 text-sm hover:bg-white/5"
+              onClick={() => { setShowCreateForm(false); setSprintErrors({}); }}
+              className="px-5 py-2.5 rounded-lg border border-border text-muted-foreground text-sm hover:bg-muted"
             >
               {t.modal?.cancel || 'Cancel'}
             </button>

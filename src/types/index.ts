@@ -220,6 +220,58 @@ export interface TaskFilter {
   search?: string;
 }
 
+// Chat Types
+export interface ChatUser {
+  id: string;
+  name: string;
+  avatar: string;
+  status?: string;
+}
+
+export interface ChatMember {
+  id: string;
+  chatId: string;
+  userId: string;
+  joinedAt: string;
+  lastRead?: string;
+  user: ChatUser;
+}
+
+export interface ChatMessageReply {
+  id: string;
+  content: string;
+  user: { id: string; name: string };
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  userId: string;
+  content: string;
+  type: 'text' | 'image' | 'file';
+  attachmentUrl?: string;
+  replyToId?: string;
+  replyTo?: ChatMessageReply;
+  createdAt: string;
+  editedAt?: string;
+  user: ChatUser;
+}
+
+export interface Chat {
+  id: string;
+  type: 'direct' | 'project';
+  name?: string;
+  projectId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members: ChatMember[];
+  project?: { id: string; name: string; color: string };
+  messages?: ChatMessage[];
+  unreadCount?: number;
+  myLastRead?: string;
+}
+
 // Undo/Redo Types
 export interface UndoAction {
   id: string;

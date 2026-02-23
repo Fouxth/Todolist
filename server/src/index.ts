@@ -19,6 +19,7 @@ import { commentsRouter } from './routes/comments.js';
 import { profileRouter } from './routes/profile.js';
 import { attachmentsRouter } from './routes/attachments.js';
 import { sprintsRouter } from './routes/sprints.js';
+import { chatsRouter } from './routes/chats.js';
 import { setIO } from './lib/socket.js';
 import { checkUpcomingDeadlines } from './lib/email.js';
 import { authenticate } from './middleware/auth.js';
@@ -66,6 +67,23 @@ io.on('connection', (socket) => {
     const userId = (socket as any).userId;
     socket.join(`user:${userId}`);
     console.log(`🔌 User ${userId} connected (socket ${socket.id})`);
+
+    // Chat room management
+    socket.on('chat:join', (chatId: string) => {
+        socket.join(`chat:${chatId}`);
+    });
+
+    socket.on('chat:leave', (chatId: string) => {
+        socket.leave(`chat:${chatId}`);
+    });
+
+    socket.on('chat:typing', (data: { chatId: string; isTyping: boolean; userName: string }) => {
+        socket.to(`chat:${data.chatId}`).emit('chat:typing', {
+            userId,
+            userName: data.userName,
+            isTyping: data.isTyping
+        });
+    });
 
     socket.on('disconnect', () => {
         console.log(`🔌 User ${userId} disconnected`);
@@ -120,6 +138,7 @@ app.use('/api/comments', authenticate, commentsRouter);
 app.use('/api/profile', authenticate, profileRouter);
 app.use('/api/sprints', authenticate, sprintsRouter);
 app.use('/api', authenticate, attachmentsRouter);
+app.use('/api/chats', authenticate, chatsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

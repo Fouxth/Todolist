@@ -33,6 +33,10 @@ export function NotificationPanel({
     const [isOpen, setIsOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
 
+    // Exclude chat notifications — those are handled by ChatPanel
+    const filteredNotifications = notifications.filter(n => (n.type as string) !== 'chat');
+    const filteredUnread = filteredNotifications.filter(n => !n.read).length;
+
     function timeAgo(dateStr: string): string {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
@@ -64,9 +68,9 @@ export function NotificationPanel({
                 className="relative p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
             >
                 <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
+                {filteredUnread > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--orange)] text-xs flex items-center justify-center font-bold animate-pulse">
-                        {unreadCount > 9 ? '9+' : unreadCount}
+                        {filteredUnread > 9 ? '9+' : filteredUnread}
                     </span>
                 )}
             </button>
@@ -78,14 +82,14 @@ export function NotificationPanel({
                     <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
                         <div className="flex items-center gap-2">
                             <h3 className="text-white font-semibold text-sm">{t.notification.title}</h3>
-                            {unreadCount > 0 && (
+                            {filteredUnread > 0 && (
                                 <span className="text-xs bg-[var(--orange)] text-white px-1.5 py-0.5 rounded-full font-medium">
-                                    {unreadCount}
+                                    {filteredUnread}
                                 </span>
                             )}
                         </div>
                         <div className="flex items-center gap-1">
-                            {unreadCount > 0 && (
+                            {filteredUnread > 0 && (
                                 <button
                                     onClick={onMarkAllRead}
                                     className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-md hover:bg-white/5 transition-colors flex items-center gap-1"
@@ -105,13 +109,13 @@ export function NotificationPanel({
 
                     {/* Notification List */}
                     <div className="overflow-y-auto max-h-[420px] scrollbar-thin">
-                        {notifications.length === 0 ? (
+                        {filteredNotifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                                 <Bell className="w-10 h-10 mb-3 opacity-30" />
                                 <p className="text-sm">{t.notification.empty}</p>
                             </div>
                         ) : (
-                            notifications.map(notif => {
+                            filteredNotifications.map(notif => {
                                 const config = TYPE_CONFIG[notif.type] || TYPE_CONFIG.task_created;
                                 const Icon = config.icon;
 

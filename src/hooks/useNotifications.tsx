@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
+import { Bell, Calendar, CheckCircle, MessageSquare, UserPlus, AlertCircle } from 'lucide-react';
 
 export interface Notification {
     id: string;
@@ -16,9 +17,58 @@ export interface Notification {
 
 interface UseNotificationsOptions {
     token: string | null;
+    onNotification?: (notification: Notification) => void;
 }
 
-export function useNotifications({ token }: UseNotificationsOptions) {
+// Notification icon mapping
+const getNotificationIcon = (type: string) => {
+    const iconMap: Record<string, any> = {
+        'task_assigned': UserPlus,
+        'comment': MessageSquare,
+        'mention': MessageSquare,
+        'task_completed': CheckCircle,
+        'due_soon': AlertCircle,
+        'task_created': Bell,
+        'default': Bell
+    };
+    const Icon = iconMap[type] || iconMap.default;
+    return <Icon className="w-4 h-4" />;
+};
+
+// Create notification sound using Web Audio API
+const playNotificationSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        const audioContext = new AudioContext();
+        
+        // Create a simple pleasant notification tone
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Two-tone notification (E5 -> G#5)
+        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(830.61, audioContext.currentTime + 0.1);
+        
+        // Envelope for smooth sound
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.type = 'sine';
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+        
+        // Clean up
+        setTimeout(() => audioContext.close(), 400);
+    } catch (error) {
+        console.error('Failed to play notification sound:', error);
+    }
+};
+
+export function useNotifications({ token, onNotification }: UseNotificationsOptions) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const socketRef = useRef<Socket | null>(null);
@@ -51,29 +101,31 @@ export function useNotifications({ token }: UseNotificationsOptions) {
         });
 
         socket.on('connect', () => {
-            console.log('🔌 Socket connected');
+            // connected
         });
 
         socket.on('new_notification', (notif: Notification) => {
             setNotifications(prev => [notif, ...prev]);
             setUnreadCount(prev => prev + 1);
 
-            // Toast notification
-            toast(notif.title, {
-                description: notif.message,
-                duration: 5000,
-            });
+            // Skip toast for chat notifications — handled by ChatPanel unread badge
+            if (notif.type !== 'chat' as any) {
+                toast(notif.title, {
+                    description: notif.message,
+                    duration: 5000,
+                    icon: getNotificationIcon(notif.type),
+                });
+                playNotificationSound();
+            }
 
-            // Play notification sound
-            try {
-                const audio = new Audio('data:audio/wav;base64,UklGRl9vT19telegramXAAMACIAEABkAGQAAABklAAIBigBMITMx');
-                audio.volume = 0.3;
-                audio.play().catch(() => { });
-            } catch { }
+            // Call callback if provided
+            if (onNotification) {
+                onNotification(notif);
+            }
         });
 
         socket.on('disconnect', () => {
-            console.log('🔌 Socket disconnected');
+            // disconnected
         });
 
         socketRef.current = socket;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { emitToUser } from '../lib/socket.js';
+import { createAndSendNotification, createAndSendNotifications, emitToUser } from '../lib/socket.js';
 import { sendEmail, taskAssignedEmail } from '../lib/email.js';
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth.js';
 
@@ -214,8 +214,25 @@ tasksRouter.post('/', async (req, res) => {
 // PATCH /api/tasks/:id - Update task
 tasksRouter.patch('/:id', async (req, res) => {
     try {
-        const { assignees, tags, subtasks, timeTracking, dependencies, ...taskData } = req.body;
+        const { assignees, tags, subtasks, timeTracking, dependencies, ...rawData } = req.body;
         const taskId = req.params.id;
+        const userId = req.body.updatedBy || req.body.createdBy;
+
+        // Whitelist only fields that exist in the Task Prisma model
+        const allowedFields = ['title', 'description', 'status', 'priority', 'projectId',
+            'dueDate', 'sprintId', 'recurring', 'coverImage', 'updatedBy', 'createdBy'];
+        const taskData: Record<string, unknown> = {};
+        for (const key of allowedFields) {
+            if (key in rawData) taskData[key] = rawData[key];
+        }
+
+        // Get old task data before update
+        const oldTask = await prisma.task.findUnique({
+            where: { id: taskId },
+            include: {
+                assignees: { select: { userId: true } }
+            }
+        });
 
         // Update base task data (including recurring, sprintId)
         const task = await prisma.task.update({
@@ -223,14 +240,80 @@ tasksRouter.patch('/:id', async (req, res) => {
             data: taskData
         });
 
+        // Track changes for notifications
+        const changes: string[] = [];
+        const notifyUsers = new Set<string>();
+
         // Update assignees if provided
         if (assignees !== undefined) {
+            const oldAssignees = oldTask?.assignees.map(a => a.userId) || [];
+            const newAssignees = assignees;
+            const addedAssignees = newAssignees.filter((id: string) => !oldAssignees.includes(id));
+            const removedAssignees = oldAssignees.filter(id => !newAssignees.includes(id));
+
             await prisma.taskAssignee.deleteMany({ where: { taskId } });
             if (assignees.length > 0) {
                 await prisma.taskAssignee.createMany({
                     data: assignees.map((userId: string) => ({ taskId, userId }))
                 });
             }
+
+            // Notify newly assigned users
+            if (addedAssignees.length > 0) {
+                const updater = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+                await createAndSendNotifications(
+                    addedAssignees,
+                    'task_assigned',
+                    'มีงานใหม่มอบหมายให้คุณ',
+                    `${updater?.name || 'ใครบางคน'} มอบหมายงาน "${task.title}" ให้คุณ`,
+                    taskId
+                );
+            }
+
+            // Add all current assignees to notify list for other changes
+            newAssignees.forEach((id: string) => notifyUsers.add(id));
+        } else if (oldTask) {
+            // Add existing assignees to notify list
+            oldTask.assignees.forEach(a => notifyUsers.add(a.userId));
+        }
+
+        // Check for status change
+        if (taskData.status && oldTask && taskData.status !== oldTask.status) {
+            const statusLabels: Record<string, string> = {
+                'todo': 'รอดำเนินการ',
+                'in-progress': 'กำลังทำ',
+                'in-review': 'รอตรวจสอบ',
+                'done': 'เสร็จสิ้น'
+            };
+            changes.push(`สถานะ: ${statusLabels[taskData.status] || taskData.status}`);
+
+            // If completed, send success notification
+            if (taskData.status === 'done') {
+                const updater = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+                await createAndSendNotifications(
+                    Array.from(notifyUsers).filter(id => id !== userId),
+                    'task_completed',
+                    '✅ งานเสร็จสิ้น',
+                    `${updater?.name || 'ใครบางคน'} ทำงาน "${task.title}" เสร็จแล้ว`,
+                    taskId
+                );
+            }
+        }
+
+        // Check for priority change
+        if (taskData.priority && oldTask && taskData.priority !== oldTask.priority) {
+            const priorityLabels: Record<string, string> = {
+                'low': 'ต่ำ',
+                'medium': 'ปานกลาง',
+                'high': 'สูง',
+                'urgent': 'เร่งด่วน'
+            };
+            changes.push(`ความสำคัญ: ${priorityLabels[taskData.priority] || taskData.priority}`);
+        }
+
+        // Check for due date change
+        if (taskData.dueDate && oldTask && taskData.dueDate !== oldTask.dueDate) {
+            changes.push(`วันครบกำหนด: ${new Date(taskData.dueDate).toLocaleDateString('th-TH')}`);
         }
 
         // Update tags if provided
@@ -296,13 +379,29 @@ tasksRouter.patch('/:id', async (req, res) => {
         // Create activity
         await prisma.activity.create({
             data: {
-                userId: task.createdBy,
+                userId: userId || task.createdBy,
                 action: 'updated',
                 targetType: 'task',
                 targetId: task.id,
                 targetName: task.title
             }
         });
+
+        // Send general update notification if there are changes
+        if (changes.length > 0 && notifyUsers.size > 0) {
+            const updater = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+            const notifyUsersList = Array.from(notifyUsers).filter(id => id !== userId);
+            
+            if (notifyUsersList.length > 0) {
+                await createAndSendNotifications(
+                    notifyUsersList,
+                    'task_assigned', // Using existing type
+                    '🔔 งานมีการอัปเดต',
+                    `${updater?.name || 'ใครบางคน'} อัปเดตงาน "${task.title}": ${changes.join(', ')}`,
+                    taskId
+                );
+            }
+        }
 
         // Return full task
         const fullTask = await prisma.task.findUnique({
@@ -337,7 +436,6 @@ tasksRouter.patch('/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to update task' });
     }
 });
-
 // PATCH /api/tasks/:id/status - Move task (change status)
 tasksRouter.patch('/:id/status', async (req, res) => {
     try {

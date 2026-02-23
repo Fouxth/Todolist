@@ -15,7 +15,8 @@ import {
   Languages,
   Sun,
   Moon,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -29,9 +30,11 @@ interface SidebarProps {
   isMobile?: boolean;
   isOpen?: boolean;
   onToggle?: () => void;
+  totalUnread?: number;
+  onChatOpen?: () => void;
 }
 
-export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle: _onToggle }: SidebarProps) {
+export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle: _onToggle, totalUnread = 0, onChatOpen }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { t, lang, toggleLang } = useLanguage();
   const { theme, setTheme } = useTheme();
@@ -117,6 +120,36 @@ export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMob
           );
         })}
       </nav>
+
+      {/* Chat Button */}
+      <div className="px-2 pb-1">
+        <button
+          onClick={onChatOpen}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-250 group relative",
+            "text-gray-400 hover:text-white hover:bg-white/5"
+          )}
+        >
+          <div className="relative flex-shrink-0">
+            <MessageSquare className="w-5 h-5 transition-transform duration-250 group-hover:scale-110 group-hover:rotate-6" />
+            {totalUnread > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-[var(--orange)] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
+          </div>
+          {!collapsed && (
+            <span className="text-sm font-medium whitespace-nowrap animate-slide-in flex-1 text-left">
+              แชท
+            </span>
+          )}
+          {!collapsed && totalUnread > 0 && (
+            <span className="bg-[var(--orange)] text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+              {totalUnread > 99 ? '99+' : totalUnread}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Bottom Quick Actions */}
       <div className="px-2 pb-2 flex items-center gap-1">

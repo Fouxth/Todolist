@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { emptyFilters } from '@/components/tasks/TaskFilterPanel';
 import type { FilterState } from '@/components/tasks/TaskFilterPanel';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { ChatPanel } from '@/components/chat/ChatPanel';
+import { useChats } from '@/hooks/useChats';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,8 +15,10 @@ import { TeamMembers } from '@/components/team/TeamMembers';
 import { ProjectList } from '@/components/projects/ProjectList';
 import { TaskModal } from '@/components/modals/TaskModal';
 import { SprintBoard } from '@/components/sprints/SprintBoard';
+import { AlertSystem } from '@/components/notifications/AlertSystem';
 import { useStore } from '@/hooks/useStore';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAlerts } from '@/hooks/useAlerts';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useKeyboardShortcuts, KeyboardShortcutsDialog } from '@/hooks/useKeyboardShortcuts';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -56,6 +60,7 @@ function App() {
   const [selectedProject] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(emptyFilters);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -66,7 +71,26 @@ function App() {
   const store = useStore();
   const { t, lang, setLang } = useLanguage();
   const { currentUser: authUser, token, isLoading: authLoading, logout, refreshUser } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllRead, deleteNotification } = useNotifications({ token });
+  const alerts = useAlerts();
+  const chatHook = useChats({ token, currentUserId: authUser?.id ?? '' });
+  const { notifications, unreadCount, markAsRead, markAllRead, deleteNotification } = useNotifications({ 
+    token,
+    onNotification: (notification) => {
+      // Skip alert popup for chat — handled by ChatPanel unread badge
+      if ((notification.type as string) === 'chat') return;
+
+      const alertTypeMap: Record<string, 'info' | 'success' | 'warning' | 'error'> = {
+        'task_assigned': 'info',
+        'task_completed': 'success',
+        'due_soon': 'warning',
+        'task_created': 'info',
+        'comment': 'info',
+        'mention': 'warning',
+      };
+      const alertType = alertTypeMap[notification.type] || 'info';
+      alerts[alertType](notification.title, notification.message, 6000);
+    }
+  });
   const { pushAction, undo, redo, canUndo, canRedo } = useUndoRedo();
   const { registerShortcut, setShowDialog: setShowShortcuts } = useKeyboardShortcuts();
 
@@ -208,12 +232,13 @@ function App() {
         redo: async () => store.updateTask(selectedTask.id, taskData),
         timestamp: new Date()
       });
+      alerts.success('อัปเดตงานแล้ว', `"${selectedTask.title}" ได้รับการอัปเดตเรียบร้อย`, 3000);
     } else {
       const result = await store.addTask(taskData as Omit<Task, 'id' | 'createdAt' | 'updatedAt'>);
       if (!result) {
-        toast.error(t.common.createError);
+        alerts.error('ไม่สามารถสร้างงานได้', 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', 5000);
       } else {
-        toast.success(t.common.taskCreated);
+        alerts.success('สร้างงานใหม่แล้ว', `"${taskData.title}" ถูกสร้างเรียบร้อยแล้ว`, 4000);
       }
     }
   };
@@ -222,6 +247,23 @@ function App() {
     const task = store.tasks.find(t => t.id === taskId);
     const prevStatus = task?.status;
     store.moveTask(taskId, status);
+    
+    // Show alert for status change
+    if (task) {
+      const statusLabels = {
+        'todo': t.kanban.todo,
+        'in-progress': t.kanban.inProgress,
+        'review': t.kanban.review,
+        'done': t.kanban.done
+      };
+      
+      alerts.success(
+        'อัปเดตสถานะแล้ว',
+        `"${task.title}" → ${statusLabels[status]}`,
+        3000
+      );
+    }
+    
     if (task && prevStatus) {
       pushAction({
         id: `move-${Date.now()}`,
@@ -250,7 +292,7 @@ function App() {
     const task = store.tasks.find(t => t.id === taskId);
     try {
       await store.deleteTask(taskId);
-      toast.success(t.notification.delete);
+      alerts.success('ลบงานแล้ว', `"${task?.title}" ถูกลบออกจากระบบ`, 4000);
       if (task) {
         pushAction({
           id: `delete-${Date.now()}`,
@@ -262,7 +304,7 @@ function App() {
         });
       }
     } catch {
-      toast.error(t.common.deleteError);
+      alerts.error('ไม่สามารถลบได้', 'เกิดข้อผิดพลาดในการลบงาน กรุณาลองใหม่', 5000);
     }
   };
 
@@ -282,18 +324,6 @@ function App() {
   };
 
   const renderContent = () => {
-    // Debug: Log tasks to verify what's loaded
-    console.log('📊 Dashboard Stats Debug:', {
-      totalTasksInStore: store.tasks.length,
-      filteredTasksCount: filteredTasks.length,
-      tasksByStatus: {
-        todo: store.tasks.filter(t => t.status === 'todo').length,
-        'in-progress': store.tasks.filter(t => t.status === 'in-progress').length,
-        review: store.tasks.filter(t => t.status === 'review').length,
-        done: store.tasks.filter(t => t.status === 'done').length
-      }
-    });
-
     switch (activeView) {
       case 'dashboard':
         return (
@@ -524,6 +554,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
+      {/* Alert System */}
+      <AlertSystem alerts={alerts.alerts} onDismiss={alerts.dismissAlert} />
+
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -538,6 +571,8 @@ function App() {
         isMobile={isMobile}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        totalUnread={chatHook.totalUnread}
+        onChatOpen={() => setIsChatOpen(true)}
       />
 
       {/* Mobile Nav */}
@@ -609,6 +644,16 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* Chat Panel */}
+      <ChatPanel
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        chatHook={chatHook}
+        currentUser={authUser}
+        users={store.users}
+        projects={store.projects}
+      />
 
       {/* Keyboard Shortcuts Dialog */}
       <KeyboardShortcutsDialog />

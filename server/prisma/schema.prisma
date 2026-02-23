@@ -31,6 +31,9 @@ model User {
   activities     Activity[]
   teamMembers    TeamMember[]
   notifications  Notification[]
+  chatMembers    ChatMember[]
+  chatMessages   ChatMessage[]
+  createdChats   Chat[]          @relation("ChatCreator")
 }
 
 // ============ Notifications ============
@@ -68,6 +71,7 @@ model Project {
   tasks          Task[]
   sprints        Sprint[]
   calendarEvents CalendarEvent[]
+  chats          Chat[]
 }
 
 // ============ Sprints ============
@@ -281,4 +285,58 @@ model Activity {
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ Chat System ============
+model Chat {
+  id        String   @id @default(cuid())
+  type      String   // 'direct' or 'project'
+  name      String?  // For project chats; null for direct
+  projectId String?  // Linked project if type='project'
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator  User          @relation("ChatCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  project  Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  members  ChatMember[]
+  messages ChatMessage[]
+
+  @@index([projectId])
+  @@index([type])
+}
+
+model ChatMember {
+  id       String    @id @default(cuid())
+  chatId   String
+  userId   String
+  joinedAt DateTime  @default(now())
+  lastRead DateTime?
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+  @@index([chatId])
+}
+
+model ChatMessage {
+  id            String    @id @default(cuid())
+  chatId        String
+  userId        String
+  content       String    @db.Text
+  type          String    @default("text") // 'text', 'image', 'file'
+  attachmentUrl String?
+  replyToId     String?
+  createdAt     DateTime  @default(now())
+  editedAt      DateTime?
+
+  chat    Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies ChatMessage[] @relation("MessageReplies")
+
+  @@index([chatId, createdAt])
+  @@index([userId])
 }

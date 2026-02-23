@@ -186,7 +186,6 @@ export const useStore = () => {
           status: updates.status,
           priority: updates.priority,
           projectId: updates.projectId,
-          teamId: updates.teamId || undefined,
           dueDate: updates.dueDate,
           assignees: updates.assignees,
           tags: updates.tags,

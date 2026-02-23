@@ -25,6 +25,10 @@ teamsRouter.get('/', async (_req, res) => {
 teamsRouter.post('/', async (req, res) => {
     try {
         const { members, ...teamData } = req.body;
+        // Basic validation
+        if (!teamData.name || !teamData.projectId) {
+            return res.status(400).json({ error: 'Missing required fields: name and projectId' });
+        }
         const team = await prisma.team.create({
             data: {
                 ...teamData,
@@ -40,6 +44,11 @@ teamsRouter.post('/', async (req, res) => {
         res.status(201).json(team);
     } catch (error) {
         console.error('Error creating team:', error);
+        // If it's a Prisma validation/constraint error, return a 400 with details when possible
+        const code = (error as any)?.code;
+        if (code) {
+            return res.status(400).json({ error: 'Database error', code, message: (error as any).message });
+        }
         res.status(500).json({ error: 'Failed to create team' });
     }
 });

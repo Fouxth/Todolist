@@ -4,7 +4,7 @@ import type { Translations } from './th';
 const en: Translations = {
     // App
     app: {
-        name: 'DevTeam',
+        name: 'Dxv4TH',
         title: 'Task Management Dashboard',
     },
 

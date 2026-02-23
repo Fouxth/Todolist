@@ -2,7 +2,7 @@
 const th = {
     // App
     app: {
-        name: 'DevTeam',
+        name: 'Dxv4TH',
         title: 'แดชบอร์ดจัดการงาน',
     },
 

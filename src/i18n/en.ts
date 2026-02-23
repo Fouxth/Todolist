@@ -87,6 +87,7 @@ const en: Translations = {
     modal: {
         editTask: 'Edit Task',
         createTask: 'Create New Task',
+        close: 'Close',
         taskTitle: 'Task Title *',
         titlePlaceholder: 'Enter task title',
         description: 'Description',
@@ -227,6 +228,7 @@ const en: Translations = {
         dropHere: 'Drop files here or click to upload',
         maxSize: 'Max 10MB per file',
         uploading: 'Uploading...',
+        empty: 'No attachments',
     },
 
     // Reports

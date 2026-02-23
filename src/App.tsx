@@ -53,7 +53,7 @@ function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [defaultTaskStatus, setDefaultTaskStatus] = useState<TaskStatus>('todo');
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProject] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(emptyFilters);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);

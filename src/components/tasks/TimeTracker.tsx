@@ -18,8 +18,8 @@ export function TimeTracker({ timeTracking, onStart, onStop, currentUserId, onRe
   const { t } = useLanguage();
   const [elapsed, setElapsed] = useState(0);
   const [description, setDescription] = useState('');
-  const [showStartInput, setShowStartInput] = useState(false);
-  const [startDescription, setStartDescription] = useState('');
+  // const [showStartInput, setShowStartInput] = useState(false);
+  // const [startDescription, setStartDescription] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Find active entry (no endTime)

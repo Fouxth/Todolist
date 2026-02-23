@@ -15,7 +15,7 @@ interface ProjectDetailPageProps {
   onCreateTask: (status?: Task['status']) => void;
   onDeleteTask: (taskId: string) => void;
   onStartTimeTracking: (taskId: string) => void;
-  onStopTimeTracking: (taskId: string) => void;
+  onStopTimeTracking: (taskId: string, entryId: string, description?: string) => void;
   currentUserId?: string;
 }
 

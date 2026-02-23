@@ -368,7 +368,6 @@ export function TeamCalendar({ events, tasks, users, projects, currentUserId, on
             <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Events ({selectedDateEvents.length})</h4>
             <div className="space-y-2">
               {selectedDateEvents.map(event => {
-                const creator = users.find(u => u.id === event.userId);
                 const eventAttendees = event.attendees 
                   ? users.filter(u => event.attendees.includes(u.id))
                   : [];

@@ -4,7 +4,6 @@ import type { CalendarEvent, User, Project } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
 
 interface EventModalProps {
@@ -26,7 +25,6 @@ const eventTypes = [
 ] as const;
 
 export function EventModal({ isOpen, onClose, onSave, event, users, projects, currentUserId, defaultDate }: EventModalProps) {
-  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   
   const [title, setTitle] = useState('');

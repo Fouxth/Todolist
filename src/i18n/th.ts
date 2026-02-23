@@ -85,6 +85,7 @@ const th = {
     modal: {
         editTask: 'แก้ไขงาน',
         createTask: 'สร้างงานใหม่',
+        close: 'ปิด',
         taskTitle: 'ชื่องาน *',
         titlePlaceholder: 'ป้อนชื่องาน',
         description: 'รายละเอียด',
@@ -225,6 +226,7 @@ const th = {
         dropHere: 'วางไฟล์ที่นี่ หรือคลิกเพื่ออัปโหลด',
         maxSize: 'ขนาดไม่เกิน 10MB ต่อไฟล์',
         uploading: 'กำลังอัปโหลด...',
+        empty: 'ไม่มีไฟล์แนบ',
     },
 
     // Reports

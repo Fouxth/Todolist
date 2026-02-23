@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type {
   User, Team, Project, Task, CalendarEvent, Activity, Sprint,
-  TaskStatus, TaskFilter, DashboardStats
+  TaskStatus, TaskFilter, DashboardStats, TimeEntry
 } from '@/types';
 
 const API_BASE = '/api';
@@ -255,7 +255,7 @@ export const useStore = () => {
             timeTracking: {
               estimated: task.timeTracking?.estimated || 0,
               spent: task.timeTracking?.spent || 0,
-              entries: [...(task.timeTracking?.entries || []), entry]
+              entries: [...(task.timeTracking?.entries || []), entry] as TimeEntry[]
             }
           };
         }
@@ -269,8 +269,9 @@ export const useStore = () => {
           return {
             ...task,
             timeTracking: {
-              ...task.timeTracking,
-              entries: task.timeTracking?.entries.filter(e => !e.id.startsWith('te')) || []
+              estimated: task.timeTracking?.estimated || 0,
+              spent: task.timeTracking?.spent || 0,
+              entries: (task.timeTracking?.entries.filter(e => !e.id.startsWith('te')) || []) as TimeEntry[]
             }
           };
         }
@@ -295,13 +296,13 @@ export const useStore = () => {
               return updatedEntry;
             }
             return entry;
-          });
+          }) as TimeEntry[];
           const totalSpent = updatedEntries.reduce((sum, e) => sum + e.duration, 0);
 
           return {
             ...task,
             timeTracking: {
-              ...task.timeTracking,
+              estimated: task.timeTracking.estimated || 0,
               spent: totalSpent,
               entries: updatedEntries
             }
@@ -346,17 +347,15 @@ export const useStore = () => {
   }, []);
 
   // Calendar Actions
-  const addCalendarEvent = useCallback(async (event: Omit<CalendarEvent, 'id'>) => {
+  const addCalendarEvent = useCallback(async (eventData: Partial<CalendarEvent>): Promise<void> => {
     try {
       const newEvent = await apiFetch<CalendarEvent>('/events', {
         method: 'POST',
-        body: JSON.stringify(event)
+        body: JSON.stringify(eventData)
       });
       setCalendarEvents(prev => [...prev, newEvent]);
-      return newEvent;
     } catch (error) {
       console.error('Failed to add event:', error);
-      return null;
     }
   }, []);
 

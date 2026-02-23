@@ -664,7 +664,7 @@ export function TaskModal({
                 <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                   <p className="text-sm text-gray-400">
                     {t.timeTracker?.spent || 'เวลาที่ใช้'}: {Math.floor((task.timeTracking?.spent || 0) / 60)}h {(task.timeTracking?.spent || 0) % 60}m
-                    {task.timeTracking?.estimated > 0 && (
+                    {task.timeTracking?.estimated && task.timeTracking.estimated > 0 && (
                       <span className="ml-2">
                         / {Math.floor(task.timeTracking.estimated / 60)}h {task.timeTracking.estimated % 60}m
                       </span>

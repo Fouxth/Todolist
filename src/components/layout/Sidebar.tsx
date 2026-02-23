@@ -213,7 +213,9 @@ export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMob
           {!collapsed && (
             <div className="flex-1 min-w-0 animate-slide-in">
               <p className="text-sm font-medium truncate">{currentUser.name}</p>
-              <p className="text-xs text-gray-400 truncate">{currentUser.role}</p>
+              <p className="text-xs text-gray-400 truncate">
+                {(t.team as Record<string, string>)[currentUser.role] ?? currentUser.role}
+              </p>
             </div>
           )}
 

@@ -457,6 +457,14 @@ function App() {
               onDeleteTeam={store.deleteTeam}
               onInviteUser={handleInviteUser}
               onRefreshUsers={store.refreshUsers}
+              onMessageUser={async (userId) => {
+                await chatHook.openDirectChat(userId);
+                setIsChatOpen(true);
+              }}
+              onViewUserTasks={(userId) => {
+                setFilters({ ...emptyFilters, assignees: [userId] });
+                setActiveView('tasks');
+              }}
             />
           </div>
         );

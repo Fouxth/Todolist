@@ -28,6 +28,8 @@ interface TeamMembersProps {
   onDeleteTeam: (teamId: string) => Promise<unknown>;
   onInviteUser: (data: { name: string; email: string; password: string; role: string; department?: string }) => Promise<User>;
   onRefreshUsers: () => Promise<void>;
+  onMessageUser?: (userId: string) => void;
+  onViewUserTasks?: (userId: string) => void;
 }
 
 const roleColors: Record<string, string> = {
@@ -42,7 +44,7 @@ const teamColors = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
 ];
 
-export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers }: TeamMembersProps) {
+export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers, onMessageUser, onViewUserTasks }: TeamMembersProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
@@ -734,11 +736,17 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
 
             {/* Actions */}
             <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--orange)] hover:bg-[var(--orange)]/90 text-white rounded-lg transition-colors">
+              <button
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--orange)] hover:bg-[var(--orange)]/90 text-white rounded-lg transition-colors"
+                onClick={() => onMessageUser?.(selectedUser.id)}
+              >
                 <Mail className="w-4 h-4" />
                 {t.teamPage.message}
               </button>
-              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors">
+              <button
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                onClick={() => onViewUserTasks?.(selectedUser.id)}
+              >
                 <TrendingUp className="w-4 h-4" />
                 {t.teamPage.viewReport}
               </button>

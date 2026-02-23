@@ -26,8 +26,16 @@ teamsRouter.post('/', async (req, res) => {
     try {
         const { members, ...teamData } = req.body;
         // Basic validation
-        if (!teamData.name || !teamData.projectId) {
-            return res.status(400).json({ error: 'Missing required fields: name and projectId' });
+        if (!teamData.name) {
+            return res.status(400).json({ error: 'Missing required field: name' });
+        }
+        // If no projectId provided, use the first available project
+        if (!teamData.projectId) {
+            const firstProject = await prisma.project.findFirst({ orderBy: { createdAt: 'asc' } });
+            if (!firstProject) {
+                return res.status(400).json({ error: 'No project found. Please create a project first.' });
+            }
+            teamData.projectId = firstProject.id;
         }
         const team = await prisma.team.create({
             data: {

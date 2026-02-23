@@ -1,27 +1,26 @@
 import { useState } from 'react';
-import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { User, Bell, Palette, Globe, Shield, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { User, Bell, Shield, Save, Loader2, CheckCircle2 } from 'lucide-react';
 import type { User as UserType } from '@/types';
+import { type NotificationPrefs } from '@/hooks/useNotifications';
 
 interface SettingsPageProps {
     currentUser: UserType;
     lang: 'th' | 'en';
     onLangChange: (l: 'th' | 'en') => void;
     onUserUpdate: (data: Partial<UserType>) => Promise<void>;
+    notifPrefs: NotificationPrefs;
+    onNotifPrefsChange: (prefs: NotificationPrefs) => void;
 }
 
-export function SettingsPage({ currentUser, lang, onLangChange, onUserUpdate }: SettingsPageProps) {
-    const { theme, setTheme } = useTheme();
+export function SettingsPage({ currentUser, lang, onLangChange: _onLangChange, onUserUpdate, notifPrefs, onNotifPrefsChange }: SettingsPageProps) {
     const { logout } = useAuth();
     const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('profile');
 
     const TABS = [
         { id: 'profile', label: t.settings.tabs.profile, icon: User },
-        { id: 'appearance', label: t.settings.tabs.appearance, icon: Palette },
-        { id: 'language', label: t.settings.tabs.language, icon: Globe },
         { id: 'notifications', label: t.settings.tabs.notifications, icon: Bell },
         { id: 'security', label: t.settings.tabs.security, icon: Shield },
     ];
@@ -33,9 +32,6 @@ export function SettingsPage({ currentUser, lang, onLangChange, onUserUpdate }: 
     const [status, setStatus] = useState(currentUser.status);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-
-    // Notification toggles
-    const [notifs, setNotifs] = useState({ taskAssigned: true, taskDue: true, mention: true, projectUpdate: false, weeklyReport: true });
 
     // Password change state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -121,7 +117,7 @@ export function SettingsPage({ currentUser, lang, onLangChange, onUserUpdate }: 
                             </div>
                             <div>
                                 <label className={labelCls}>{t.settings.profile.department}</label>
-                                <input type="text" value={department} onChange={e => setDepartment(e.target.value)} placeholder={t.settings.profile.departmentPlaceholder} className={inputCls} />
+                                <input type="text" value={department} readOnly className={`${inputCls} opacity-50 cursor-not-allowed`} />
                             </div>
                             <div>
                                 <label className={labelCls}>{t.settings.profile.status}</label>
@@ -146,87 +142,41 @@ export function SettingsPage({ currentUser, lang, onLangChange, onUserUpdate }: 
                     </div>
                 );
 
-            case 'appearance':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-white font-medium mb-1">{t.settings.appearance.themeTitle}</h3>
-                            <p className="text-gray-400 text-sm mb-4">{t.settings.appearance.themeSubtitle}</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { id: 'dark', label: t.settings.appearance.dark, desc: t.settings.appearance.darkDesc },
-                                    { id: 'light', label: t.settings.appearance.light, desc: t.settings.appearance.lightDesc },
-                                    { id: 'system', label: t.settings.appearance.system, desc: t.settings.appearance.systemDesc },
-                                ].map(themeOption => (
-                                    <button
-                                        key={themeOption.id}
-                                        onClick={() => setTheme(themeOption.id)}
-                                        className={`p-4 rounded-xl border text-left transition-all ${theme === themeOption.id
-                                            ? 'border-[#ff6b35] bg-[rgba(255,107,53,0.1)] text-white'
-                                            : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className="font-medium mb-1">{themeOption.label}</div>
-                                        <div className="text-xs opacity-70">{themeOption.desc}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-
-            case 'language':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-white font-medium mb-1">{t.settings.language.langTitle}</h3>
-                            <p className="text-gray-400 text-sm mb-4">{t.settings.language.langSubtitle}</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                {[
-                                    { id: 'th', label: t.settings.language.th, desc: t.settings.language.thDesc },
-                                    { id: 'en', label: t.settings.language.en, desc: t.settings.language.enDesc },
-                                ].map(l => (
-                                    <button
-                                        key={l.id}
-                                        onClick={() => onLangChange(l.id as 'th' | 'en')}
-                                        className={`p-4 rounded-xl border text-left transition-all ${lang === l.id
-                                            ? 'border-[#ff6b35] bg-[rgba(255,107,53,0.1)] text-white'
-                                            : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className="font-medium mb-1">{l.label}</div>
-                                        <div className="text-xs opacity-70">{l.desc}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
 
             case 'notifications':
                 return (
                     <div className="space-y-4">
                         <p className="text-gray-400 text-sm">{t.settings.notificationSettings.settingsSubtitle}</p>
-                        {[
-                            { key: 'taskAssigned', label: t.settings.notificationSettings.taskAssigned, desc: t.settings.notificationSettings.taskAssignedDesc },
-                            { key: 'taskDue', label: t.settings.notificationSettings.taskDue, desc: t.settings.notificationSettings.taskDueDesc },
-                            { key: 'mention', label: t.settings.notificationSettings.mention, desc: t.settings.notificationSettings.mentionDesc },
-                            { key: 'projectUpdate', label: t.settings.notificationSettings.projectUpdate, desc: t.settings.notificationSettings.projectUpdateDesc },
-                            { key: 'weeklyReport', label: t.settings.notificationSettings.weeklyReport, desc: t.settings.notificationSettings.weeklyReportDesc },
-                        ].map(n => (
+                        {([
+                            { key: 'taskAssigned' as keyof NotificationPrefs, label: t.settings.notificationSettings.taskAssigned, desc: t.settings.notificationSettings.taskAssignedDesc },
+                            { key: 'taskDue'      as keyof NotificationPrefs, label: t.settings.notificationSettings.taskDue,      desc: t.settings.notificationSettings.taskDueDesc },
+                            { key: 'mention'      as keyof NotificationPrefs, label: t.settings.notificationSettings.mention,      desc: t.settings.notificationSettings.mentionDesc },
+                            { key: 'projectUpdate'as keyof NotificationPrefs, label: t.settings.notificationSettings.projectUpdate,desc: t.settings.notificationSettings.projectUpdateDesc },
+                            { key: 'weeklyReport' as keyof NotificationPrefs, label: t.settings.notificationSettings.weeklyReport, desc: t.settings.notificationSettings.weeklyReportDesc },
+                        ] as const).map(n => (
                             <div key={n.key} className="flex items-center justify-between p-4 bg-white/3 border border-white/5 rounded-xl">
                                 <div>
                                     <div className="text-sm font-medium text-white">{n.label}</div>
                                     <div className="text-xs text-gray-500 mt-0.5">{n.desc}</div>
                                 </div>
                                 <button
-                                    onClick={() => setNotifs(prev => ({ ...prev, [n.key]: !prev[n.key as keyof typeof prev] }))}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifs[n.key as keyof typeof notifs] ? 'bg-[#ff6b35]' : 'bg-white/10'}`}
+                                    onClick={() => {
+                                        const updated = { ...notifPrefs, [n.key]: !notifPrefs[n.key] };
+                                        onNotifPrefsChange(updated);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                        notifPrefs[n.key] ? 'bg-[#ff6b35]' : 'bg-white/10'
+                                    }`}
                                 >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${notifs[n.key as keyof typeof notifs] ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                        notifPrefs[n.key] ? 'translate-x-6' : 'translate-x-1'
+                                    }`} />
                                 </button>
                             </div>
                         ))}
+                        <p className="text-xs text-gray-500 pt-2">
+                            {lang === 'th' ? '✓ การตั้งค่าจะถูกบันทึกทันทีและมีผลในทันที' : '✓ Settings are saved instantly and take effect immediately'}
+                        </p>
                     </div>
                 );
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, MoreHorizontal, CheckSquare, Clock, TrendingUp, UserPlus, Plus, Trash2, Shield, Users2 } from 'lucide-react';
+import { Mail, MoreHorizontal, CheckSquare, Clock, TrendingUp, UserPlus, Plus, Trash2, Shield, Users2, X, AlertCircle, Loader, CheckCircle2, Eye } from 'lucide-react';
 import type { User, Task, Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -30,6 +30,9 @@ interface TeamMembersProps {
   onRefreshUsers: () => Promise<void>;
   onMessageUser?: (userId: string) => void;
   onViewUserTasks?: (userId: string) => void;
+  currentUserId?: string;
+  currentUserRole?: string;
+  onUpdateUser?: (userId: string, data: { role?: string; department?: string }) => Promise<void>;
 }
 
 const roleColors: Record<string, string> = {
@@ -44,10 +47,15 @@ const teamColors = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
 ];
 
-export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers, onMessageUser, onViewUserTasks }: TeamMembersProps) {
+export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers, onMessageUser, onViewUserTasks, currentUserId, currentUserRole, onUpdateUser }: TeamMembersProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [viewTasksUser, setViewTasksUser] = useState<User | null>(null);
+  const [editUserTarget, setEditUserTarget] = useState<User | null>(null);
+  const [editRole, setEditRole] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const { t } = useLanguage();
 
   // Add member form state
@@ -601,9 +609,19 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
                         <p className="text-sm text-gray-400">{user.department}</p>
                       </div>
                       <div>
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded">
-                          <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                        </button>
+                        {(currentUserRole === 'admin' || currentUserRole === 'manager') && (
+                          <button
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setEditUserTarget(user);
+                              setEditRole(user.role);
+                              setEditDepartment(user.department || '');
+                            }}
+                          >
+                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -736,20 +754,32 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
 
             {/* Actions */}
             <div className="flex gap-2">
-              <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--orange)] hover:bg-[var(--orange)]/90 text-white rounded-lg transition-colors"
-                onClick={() => onMessageUser?.(selectedUser.id)}
-              >
-                <Mail className="w-4 h-4" />
-                {t.teamPage.message}
-              </button>
-              <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
-                onClick={() => onViewUserTasks?.(selectedUser.id)}
-              >
-                <TrendingUp className="w-4 h-4" />
-                {t.teamPage.viewReport}
-              </button>
+              {selectedUser.id !== currentUserId ? (
+                <>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--orange)] hover:bg-[var(--orange)]/90 text-white rounded-lg transition-colors"
+                    onClick={() => onMessageUser?.(selectedUser.id)}
+                  >
+                    <Mail className="w-4 h-4" />
+                    {t.teamPage.message}
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                    onClick={() => setViewTasksUser(selectedUser)}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    {t.teamPage.viewReport}
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                  onClick={() => setViewTasksUser(selectedUser)}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  {t.teamPage.viewReport}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -760,6 +790,282 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
         )}
       </div>
     </div>
+
+      {/* Edit User Dialog */}
+      {editUserTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setEditUserTarget(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md bg-[#141414] border border-white/10 rounded-2xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <img
+                  src={editUserTarget.avatar}
+                  alt={editUserTarget.name}
+                  className="w-10 h-10 rounded-full ring-2 ring-[var(--orange)]/50"
+                />
+                <div>
+                  <h2 className="text-white font-semibold">{editUserTarget.name}</h2>
+                  <p className="text-gray-400 text-sm">{editUserTarget.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditUserTarget(null)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Read-only info */}
+              <div className="p-3 rounded-xl bg-white/5 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">ชื่อ</span>
+                  <span className="text-white font-medium">{editUserTarget.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">อีเมล</span>
+                  <span className="text-white">{editUserTarget.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">สถานะ</span>
+                  <span className={cn(
+                    'capitalize',
+                    editUserTarget.status === 'online' ? 'text-green-400' :
+                    editUserTarget.status === 'busy' ? 'text-red-400' :
+                    editUserTarget.status === 'away' ? 'text-yellow-400' : 'text-gray-400'
+                  )}>
+                    {editUserTarget.status === 'online' ? 'ออนไลน์' :
+                     editUserTarget.status === 'busy' ? 'ไม่ว่าง' :
+                     editUserTarget.status === 'away' ? 'ไม่อยู่' : 'ออฟไลน์'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Editable: Role */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t.teamPage.role}</label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-white/10">
+                    {(['developer', 'designer', 'tester', 'manager', 'admin'] as const).map(r => (
+                      <SelectItem key={r} value={r} className="text-white hover:bg-white/10">
+                        {roleLabels[r] || r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Editable: Department */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">{t.teamPage.department}</label>
+                <Select value={editDepartment} onValueChange={setEditDepartment}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue placeholder="เลือกแผนก" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-white/10">
+                    {[
+                      { value: 'Engineering', label: t.teamPage.engineering },
+                      { value: 'Design', label: t.teamPage.design },
+                      { value: 'QA', label: t.teamPage.qa },
+                      { value: 'Management', label: t.teamPage.management },
+                    ].map(dept => (
+                      <SelectItem key={dept.value} value={dept.value} className="text-white hover:bg-white/10">
+                        {dept.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 px-6 pb-5">
+              <button
+                onClick={() => setEditUserTarget(null)}
+                className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors text-sm"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                disabled={editSaving}
+                onClick={async () => {
+                  if (!onUpdateUser) return;
+                  setEditSaving(true);
+                  try {
+                    await onUpdateUser(editUserTarget.id, { role: editRole, department: editDepartment });
+                    toast.success('อัปเดตข้อมูลสำเร็จ');
+                    setEditUserTarget(null);
+                  } catch {
+                    toast.error(t.common.createError);
+                  } finally {
+                    setEditSaving(false);
+                  }
+                }}
+                className="flex-1 py-2 bg-[var(--orange)] hover:bg-[var(--orange)]/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                {editSaving ? 'กำลังบันทึก...' : t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Task Report Dialog */}
+      {viewTasksUser && (() => {
+        const userTasks = tasks.filter(task => task.assignees.includes(viewTasksUser.id));
+        const doneTasks = userTasks.filter(task => task.status === 'done');
+        const inProgressTasks = userTasks.filter(task => task.status === 'in-progress');
+        const reviewTasks = userTasks.filter(task => task.status === 'review');
+        const todoTasks = userTasks.filter(task => task.status === 'todo');
+
+        const statusConfig: Record<string, { labelTh: string; color: string; icon: React.ReactNode }> = {
+          'done':        { labelTh: 'เสร็จแล้ว',    color: 'text-green-400',  icon: <CheckCircle2 className="w-4 h-4 text-green-400" /> },
+          'in-progress': { labelTh: 'กำลังทำ',     color: 'text-blue-400',   icon: <Loader className="w-4 h-4 text-blue-400" /> },
+          'review':      { labelTh: 'รอรีวิว',     color: 'text-yellow-400', icon: <Eye className="w-4 h-4 text-yellow-400" /> },
+          'todo':        { labelTh: 'ยังไม่เริ่ม',  color: 'text-gray-400',   icon: <AlertCircle className="w-4 h-4 text-gray-400" /> },
+        };
+
+        const priorityColors: Record<string, string> = {
+          urgent: 'bg-red-500/20 text-red-400 border border-red-500/30',
+          high:   'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+          medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+          low:    'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+        };
+
+        const priorityLabel: Record<string, string> = {
+          urgent: 'ด่วนมาก', high: 'สูง', medium: 'ปานกลาง', low: 'ต่ำ',
+        };
+
+        const sections = [
+          { key: 'in-progress', tasks: inProgressTasks },
+          { key: 'review',      tasks: reviewTasks },
+          { key: 'todo',        tasks: todoTasks },
+          { key: 'done',        tasks: doneTasks },
+        ];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setViewTasksUser(null)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              className="relative w-full max-w-2xl max-h-[85vh] bg-[#141414] border border-white/10 rounded-2xl shadow-2xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <img src={viewTasksUser.avatar} alt={viewTasksUser.name} className="w-10 h-10 rounded-full ring-2 ring-[var(--orange)]/50" />
+                  <div>
+                    <h2 className="text-white font-semibold text-lg">{viewTasksUser.name}</h2>
+                    <p className="text-gray-400 text-sm">รายงานงานที่รับผิดชอบ</p>
+                  </div>
+                </div>
+                <button onClick={() => setViewTasksUser(null)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-4 gap-3 px-6 py-4 border-b border-white/10">
+                <div className="text-center p-3 rounded-xl bg-white/5">
+                  <p className="text-xl font-bold text-white">{userTasks.length}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t.teamPage.totalTasks}</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-green-400/5">
+                  <p className="text-xl font-bold text-green-400">{doneTasks.length}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t.teamPage.completed}</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-blue-400/5">
+                  <p className="text-xl font-bold text-blue-400">{inProgressTasks.length}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t.teamPage.inProgress}</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-[var(--orange)]/5">
+                  <p className="text-xl font-bold text-[var(--orange)]">
+                    {userTasks.length > 0 ? Math.round((doneTasks.length / userTasks.length) * 100) : 0}%
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">% เสร็จ</p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              {userTasks.length > 0 && (
+                <div className="px-6 py-3 border-b border-white/10">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                    <span>ความคืบหน้า</span>
+                    <span>{doneTasks.length}/{userTasks.length} งาน</span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[var(--orange)] to-green-400 rounded-full transition-all"
+                      style={{ width: `${userTasks.length > 0 ? Math.round((doneTasks.length / userTasks.length) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Task List */}
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
+                {userTasks.length === 0 ? (
+                  <div className="text-center py-16 text-gray-500">
+                    <CheckSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>ไม่มีงานที่ได้รับมอบหมาย</p>
+                  </div>
+                ) : (
+                  sections.map(({ key, tasks: sectionTasks }) => {
+                    if (sectionTasks.length === 0) return null;
+                    const cfg = statusConfig[key];
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {cfg.icon}
+                          <span className="text-sm font-medium text-gray-300">{cfg.labelTh}</span>
+                          <span className="ml-auto text-xs text-gray-500">{sectionTasks.length} งาน</span>
+                        </div>
+                        <div className="space-y-2">
+                          {sectionTasks.map(task => (
+                            <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/[0.08] transition-colors">
+                              <div className="mt-0.5 flex-shrink-0">{cfg.icon}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  'text-sm font-medium truncate',
+                                  key === 'done' ? 'line-through text-gray-500' : 'text-white'
+                                )}>
+                                  {task.title}
+                                </p>
+                                {task.dueDate && (
+                                  <p className={cn(
+                                    'text-xs mt-0.5',
+                                    new Date(task.dueDate) < new Date() && key !== 'done'
+                                      ? 'text-red-400'
+                                      : 'text-gray-500'
+                                  )}>
+                                    ครบกำหนด: {new Date(task.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                  </p>
+                                )}
+                              </div>
+                              <span className={cn('flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium', priorityColors[task.priority])}>
+                                {priorityLabel[task.priority]}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

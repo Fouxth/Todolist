@@ -17,7 +17,7 @@ import { TaskModal } from '@/components/modals/TaskModal';
 import { SprintBoard } from '@/components/sprints/SprintBoard';
 import { AlertSystem } from '@/components/notifications/AlertSystem';
 import { useStore } from '@/hooks/useStore';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotifications, type NotificationPrefs, DEFAULT_NOTIF_PREFS } from '@/hooks/useNotifications';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useKeyboardShortcuts, KeyboardShortcutsDialog } from '@/hooks/useKeyboardShortcuts';
@@ -73,8 +73,23 @@ function App() {
   const { currentUser: authUser, token, isLoading: authLoading, logout, refreshUser } = useAuth();
   const alerts = useAlerts();
   const chatHook = useChats({ token, currentUserId: authUser?.id ?? '' });
-  const { notifications, markAsRead, markAllRead, deleteNotification } = useNotifications({ 
+
+  // Notification prefs — persisted in localStorage
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => {
+    try {
+      const saved = localStorage.getItem('notif_prefs');
+      return saved ? { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(saved) } : DEFAULT_NOTIF_PREFS;
+    } catch { return DEFAULT_NOTIF_PREFS; }
+  });
+
+  const handleNotifPrefsChange = (prefs: NotificationPrefs) => {
+    setNotifPrefs(prefs);
+    localStorage.setItem('notif_prefs', JSON.stringify(prefs));
+  };
+
+  const { notifications, markAsRead, markAllRead, deleteNotification } = useNotifications({
     token,
+    prefs: notifPrefs,
     onNotification: (notification) => {
       // Skip alert popup for chat — handled by ChatPanel unread badge
       if ((notification.type as string) === 'chat') return;
@@ -465,6 +480,17 @@ function App() {
                 setFilters({ ...emptyFilters, assignees: [userId] });
                 setActiveView('tasks');
               }}
+              currentUserId={authUser?.id}
+              currentUserRole={authUser?.role}
+              onUpdateUser={async (userId, data) => {
+                const res = await fetch(`/api/users/${userId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify(data),
+                });
+                if (!res.ok) throw new Error('update failed');
+                await store.refreshUsers();
+              }}
             />
           </div>
         );
@@ -539,6 +565,8 @@ function App() {
             currentUser={authUser}
             lang={lang}
             onLangChange={setLang}
+            notifPrefs={notifPrefs}
+            onNotifPrefsChange={handleNotifPrefsChange}
             onUserUpdate={async (data: Partial<User>) => {
               const res = await fetch(`/api/profile`, {
                 method: 'PATCH',

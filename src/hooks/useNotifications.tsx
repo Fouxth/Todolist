@@ -15,8 +15,35 @@ export interface Notification {
     createdAt: string;
 }
 
+export interface NotificationPrefs {
+    taskAssigned: boolean;
+    taskDue: boolean;
+    mention: boolean;
+    projectUpdate: boolean;
+    weeklyReport: boolean;
+}
+
+export const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
+    taskAssigned: true,
+    taskDue: true,
+    mention: true,
+    projectUpdate: false,
+    weeklyReport: true,
+};
+
+// Map notification type → pref key
+const TYPE_TO_PREF: Record<string, keyof NotificationPrefs> = {
+    task_assigned: 'taskAssigned',
+    due_soon:      'taskDue',
+    mention:       'mention',
+    task_created:  'projectUpdate',
+    task_completed:'projectUpdate',
+    comment:       'projectUpdate',
+};
+
 interface UseNotificationsOptions {
     token: string | null;
+    prefs?: NotificationPrefs;
     onNotification?: (notification: Notification) => void;
 }
 
@@ -68,7 +95,7 @@ const playNotificationSound = () => {
     }
 };
 
-export function useNotifications({ token, onNotification }: UseNotificationsOptions) {
+export function useNotifications({ token, prefs, onNotification }: UseNotificationsOptions) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const socketRef = useRef<Socket | null>(null);
@@ -110,17 +137,27 @@ export function useNotifications({ token, onNotification }: UseNotificationsOpti
 
             // Skip toast for chat notifications — handled by ChatPanel unread badge
             if (notif.type !== 'chat' as any) {
-                toast(notif.title, {
-                    description: notif.message,
-                    duration: 5000,
-                    icon: getNotificationIcon(notif.type),
-                });
-                playNotificationSound();
+                // Check user prefs — if the pref key exists and is false, suppress
+                const prefKey = TYPE_TO_PREF[notif.type];
+                const allowed = !prefKey || !prefs || prefs[prefKey] !== false;
+
+                if (allowed) {
+                    toast(notif.title, {
+                        description: notif.message,
+                        duration: 5000,
+                        icon: getNotificationIcon(notif.type),
+                    });
+                    playNotificationSound();
+                }
             }
 
-            // Call callback if provided
+            // Call callback if provided (also gated by prefs)
             if (onNotification) {
-                onNotification(notif);
+                const prefKey = TYPE_TO_PREF[notif.type];
+                const allowed = !prefKey || !prefs || prefs[prefKey] !== false;
+                if (allowed && (notif.type as string) !== 'chat') {
+                    onNotification(notif);
+                }
             }
         });
 

@@ -419,6 +419,7 @@ const en: Translations = {
         offline: 'Offline',
         cancel: 'Cancel',
         confirm: 'Confirm',
+        save: 'Save',
         delete: 'Delete',
         back: 'Back',
         overdue: 'Overdue',

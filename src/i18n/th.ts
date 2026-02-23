@@ -417,6 +417,7 @@ const th = {
         offline: 'ออฟไลน์',
         cancel: 'ยกเลิก',
         confirm: 'ยืนยัน',
+        save: 'บันทึก',
         delete: 'ลบ',
         back: 'กลับ',
         overdue: 'เลยกำหนด',

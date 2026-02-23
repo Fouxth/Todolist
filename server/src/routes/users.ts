@@ -56,13 +56,13 @@ usersRouter.post('/', authenticate, requireRole('admin'), async (req, res) => {
 // PATCH /api/users/:id - Update user (admin only, or self)
 usersRouter.patch('/:id', authenticate, async (req: AuthRequest, res) => {
     try {
-        // Only admin can update other users
-        if (req.userId !== req.params.id && req.userRole !== 'admin') {
+        // Only admin or manager can update other users
+        if (req.userId !== req.params.id && req.userRole !== 'admin' && req.userRole !== 'manager') {
             return res.status(403).json({ error: 'คุณไม่มีสิทธิ์แก้ไขข้อมูลผู้ใช้คนอื่น' });
         }
 
-        // Non-admin cannot change role
-        if (req.userRole !== 'admin' && req.body.role) {
+        // Non-admin and non-manager cannot change role
+        if (req.userRole !== 'admin' && req.userRole !== 'manager' && req.body.role) {
             delete req.body.role;
         }
 

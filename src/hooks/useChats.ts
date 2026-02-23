@@ -211,11 +211,10 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
     useEffect(() => {
         if (!token) return;
 
-        // Use VITE_SOCKET_URL if set (direct HTTPS server), otherwise use same origin through Vercel proxy
-        const url = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+        const url = import.meta.env.VITE_SOCKET_URL || 'https://nut-commands-reviewed-rolls.trycloudflare.com';
         const socket = io(url, {
             auth: { token },
-            transports: ['polling'],
+            transports: ['websocket', 'polling'],
             path: '/socket.io'
         });
         socketRef.current = socket;

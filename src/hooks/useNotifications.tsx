@@ -121,11 +121,10 @@ export function useNotifications({ token, prefs, onNotification }: UseNotificati
     useEffect(() => {
         if (!token) return;
 
-        // Use VITE_SOCKET_URL if set (direct HTTPS server), otherwise use same origin through Vercel proxy
-        const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://nut-commands-reviewed-rolls.trycloudflare.com';
         const socket = io(socketUrl, {
             auth: { token },
-            transports: ['polling'],
+            transports: ['websocket', 'polling'],
             path: '/socket.io'
         });
 

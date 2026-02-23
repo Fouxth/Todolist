@@ -11,6 +11,7 @@ interface TaskDependenciesProps {
   allTasks: Task[];
   onAddDependency: (dependsOnId: string, type: string) => void;
   onRemoveDependency: (depId: string) => void;
+  readOnly?: boolean;
 }
 
 export function TaskDependencies({
@@ -19,7 +20,8 @@ export function TaskDependencies({
   dependedOnBy,
   allTasks,
   onAddDependency,
-  onRemoveDependency
+  onRemoveDependency,
+  readOnly = false
 }: TaskDependenciesProps) {
   const { t } = useLanguage();
   const [showSearch, setShowSearch] = useState(false);
@@ -75,12 +77,14 @@ export function TaskDependencies({
                 )}>
                   {dep.type === 'blocks' ? (t.dependencies?.blocks || 'blocks') : (t.dependencies?.related || 'related')}
                 </span>
-                <button
-                  onClick={() => onRemoveDependency(dep.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded text-red-400 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => onRemoveDependency(dep.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded text-red-400 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -108,7 +112,7 @@ export function TaskDependencies({
       )}
 
       {/* Add dependency */}
-      {!showSearch ? (
+      {!readOnly && !showSearch ? (
         <button
           onClick={() => setShowSearch(true)}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#ff6b35] transition-colors"
@@ -116,7 +120,7 @@ export function TaskDependencies({
           <Plus className="w-4 h-4" />
           {t.dependencies?.addDependency || 'Add dependency'}
         </button>
-      ) : (
+      ) : !readOnly && showSearch ? (
         <div className="space-y-2 p-3 rounded-lg bg-white/5 border border-white/10">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -172,7 +176,7 @@ export function TaskDependencies({
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

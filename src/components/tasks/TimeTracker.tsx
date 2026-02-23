@@ -11,16 +11,20 @@ interface TimeTrackerProps {
   onStart: () => void;
   onStop: (entryId: string, description?: string) => void;
   currentUserId: string;
+  onRefresh?: () => void;
 }
 
-export function TimeTracker({ timeTracking, onStart, onStop, currentUserId }: TimeTrackerProps) {
+export function TimeTracker({ timeTracking, onStart, onStop, currentUserId, onRefresh }: TimeTrackerProps) {
   const { t } = useLanguage();
   const [elapsed, setElapsed] = useState(0);
   const [description, setDescription] = useState('');
+  const [showStartInput, setShowStartInput] = useState(false);
+  const [startDescription, setStartDescription] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Find active entry (no endTime)
   const activeEntry = timeTracking?.entries.find(e => !e.endTime && e.userId === currentUserId);
+  const isTracking = !!activeEntry;
 
   useEffect(() => {
     if (activeEntry) {
@@ -28,13 +32,26 @@ export function TimeTracker({ timeTracking, onStart, onStop, currentUserId }: Ti
       const update = () => setElapsed(Math.floor((Date.now() - start) / 1000));
       update();
       intervalRef.current = setInterval(update, 1000);
+      // Load existing description from active entry
+      if (activeEntry.description) {
+        setDescription(activeEntry.description);
+      }
+      // Auto refresh every 2 seconds to sync with server
+      const refreshInterval = setInterval(() => {
+        onRefresh?.();
+      }, 2000);
+      
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        clearInterval(refreshInterval);
+      };
     } else {
       setElapsed(0);
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [activeEntry]);
+  }, [activeEntry, onRefresh]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -58,7 +75,21 @@ export function TimeTracker({ timeTracking, onStart, onStop, currentUserId }: Ti
     if (activeEntry) {
       onStop(activeEntry.id, description);
       setDescription('');
+      // Refresh to get updated task data
+      setTimeout(() => onRefresh?.(), 100);
     }
+  };
+
+  const handleStart = () => {
+    // Check if already tracking to prevent duplicate entries
+    if (activeEntry) {
+      return;
+    }
+    
+    // Start tracking immediately without description input
+    onStart();
+    // Refresh to get updated task data
+    setTimeout(() => onRefresh?.(), 100);
   };
 
   return (
@@ -92,7 +123,7 @@ export function TimeTracker({ timeTracking, onStart, onStop, currentUserId }: Ti
                 type="text"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder={t.timeTracker?.whatWorking || 'What are you working on?'}
+                placeholder={t.timeTracker?.whatWorking || 'กำลังทำอะไรอยู่? (ไม่บังคับ)'}
                 className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-[var(--orange)] w-48"
               />
               <button
@@ -100,16 +131,22 @@ export function TimeTracker({ timeTracking, onStart, onStop, currentUserId }: Ti
                 className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
               >
                 <Square className="w-4 h-4 fill-current" />
-                <span className="text-sm font-medium">{t.timeTracker?.stop || 'Stop'}</span>
+                <span className="text-sm font-medium">{t.timeTracker?.stop || 'หยุดจับเวลา'}</span>
               </button>
             </>
           ) : (
             <button
-              onClick={onStart}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg bg-[var(--orange)]/20 text-[var(--orange)] hover:bg-[var(--orange)]/30 transition-colors"
+              onClick={handleStart}
+              disabled={isTracking}
+              className={cn(
+                "flex items-center gap-2 px-6 py-3 rounded-lg transition-colors",
+                isTracking
+                  ? "bg-white/5 text-gray-500 cursor-not-allowed"
+                  : "bg-[var(--orange)]/20 text-[var(--orange)] hover:bg-[var(--orange)]/30"
+              )}
             >
               <Play className="w-5 h-5 fill-current" />
-              <span className="text-sm font-medium">{t.timeTracker?.start || 'Start Timer'}</span>
+              <span className="text-sm font-medium">{t.timeTracker?.start || 'เริ่มจับเวลา'}</span>
             </button>
           )}
         </div>

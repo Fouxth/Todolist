@@ -60,12 +60,12 @@ const en: Translations = {
 
     // Kanban Board
     kanban: {
-        todo: 'To Do',
+        todo: 'Pending',
         inProgress: 'In Progress',
-        review: 'Review',
-        done: 'Done',
+        review: 'Under Review',
+        done: 'Completed',
         noTasks: 'No tasks',
-        addTask: 'Add task',
+        addTask: 'Add Task',
         taskBoard: 'Task Board',
         taskBoardDesc: 'Drag and drop tasks to update status',
         dropHere: 'Drop here',
@@ -79,6 +79,8 @@ const en: Translations = {
         low: 'Low',
         overdue: 'Overdue',
         progress: 'Progress',
+        readOnly: 'Read Only',
+        notAssigned: 'Not Assigned',
     },
 
     // Task Modal
@@ -109,6 +111,7 @@ const en: Translations = {
         noSprint: 'No Sprint',
         preview: 'Preview',
         edit: 'Edit',
+        readOnlyNotice: 'You can only view and comment (not assigned to this task)',
     },
 
     // Projects
@@ -129,7 +132,10 @@ const en: Translations = {
     tasksPage: {
         allTasks: 'All Tasks',
         tasks: 'Tasks',
-        subtitle: "Manage and track your team's tasks",
+        subtitle: 'Manage and track team tasks',
+        myTasks: 'My Tasks',
+        myTasksSubtitle: 'All tasks assigned to you',
+        allProjects: 'All Projects',
     },
 
     // Team
@@ -413,6 +419,8 @@ const en: Translations = {
         cancel: 'Cancel',
         confirm: 'Confirm',
         delete: 'Delete',
+        back: 'Back',
+        overdue: 'Overdue',
         deleteConfirmTitle: 'Confirm Delete',
         deleteConfirmDesc: 'Are you sure you want to delete this item? This action cannot be undone.',
         createProject: 'Create New Project',

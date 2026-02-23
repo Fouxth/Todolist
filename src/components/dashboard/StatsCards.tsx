@@ -137,6 +137,23 @@ function StatCard({ title, value, subtitle, icon: Icon, color, delay, sparkData 
 export function StatsCards({ stats, tasks = [] }: StatsCardsProps) {
   const { t } = useLanguage();
 
+  // Calculate stats from actual tasks instead of API stats
+  const calculatedStats = useMemo(() => {
+    return {
+      totalTasks: tasks.length,
+      completedTasks: tasks.filter(t => t.status === 'done').length,
+      inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
+      reviewTasks: tasks.filter(t => t.status === 'review').length,
+      teamMembers: stats.teamMembers,
+      projects: stats.projects,
+      overdueTasks: tasks.filter(t => 
+        t.dueDate && 
+        new Date(t.dueDate) < new Date() && 
+        t.status !== 'done'
+      ).length
+    };
+  }, [tasks, stats.teamMembers, stats.projects]);
+
   // Build 7-day sparkline data from tasks
   const sparklines = useMemo(() => {
     const now = new Date();
@@ -174,15 +191,15 @@ export function StatsCards({ stats, tasks = [] }: StatsCardsProps) {
   const cards = [
     {
       title: t.stats.totalTasks,
-      value: stats.totalTasks,
-      subtitle: `${stats.completedTasks} ${t.stats.completed}`,
+      value: calculatedStats.totalTasks,
+      subtitle: `${calculatedStats.completedTasks} ${t.stats.completed}`,
       icon: CheckSquare,
       color: '#ff6b35',
       sparkData: sparklines.created
     },
     {
       title: t.stats.inProgress,
-      value: stats.inProgressTasks,
+      value: calculatedStats.inProgressTasks,
       subtitle: t.stats.activeTasks,
       icon: Clock,
       color: '#2196f3',
@@ -190,15 +207,15 @@ export function StatsCards({ stats, tasks = [] }: StatsCardsProps) {
     },
     {
       title: t.stats.inReview,
-      value: stats.reviewTasks,
+      value: calculatedStats.reviewTasks,
       subtitle: t.stats.pendingApproval,
       icon: AlertCircle,
       color: '#ffc107'
     },
     {
       title: t.stats.teamMembers,
-      value: stats.teamMembers,
-      subtitle: `${stats.projects} ${t.stats.activeProjects}`,
+      value: calculatedStats.teamMembers,
+      subtitle: `${calculatedStats.projects} ${t.stats.activeProjects}`,
       icon: Users,
       color: '#4caf50',
       sparkData: sparklines.completed

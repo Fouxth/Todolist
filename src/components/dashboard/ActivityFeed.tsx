@@ -95,7 +95,7 @@ export function ActivityFeed({ activities, users }: ActivityFeedProps) {
                     <p className="text-sm text-gray-300">
                       <span className="font-medium text-white">{user?.name || 'Unknown'}</span>
                       {' '}{label}{' '}
-                      <span className="font-medium text-[var(--orange)] hover:underline cursor-pointer">
+                      <span className="font-medium text-white">
                         {activity.targetName}
                       </span>
                     </p>

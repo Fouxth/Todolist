@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
-import type { CalendarEvent, Task, User } from '@/types';
+import { ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon, GripVertical, Plus, Trash2 } from 'lucide-react';
+import type { CalendarEvent, Task, User, Project } from '@/types';
 import { cn } from '@/lib/utils';
+import { EventModal } from '@/components/modals/EventModal';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addDays, isSameMonth, isSameDay, addMonths, subMonths
@@ -13,15 +14,23 @@ interface TeamCalendarProps {
   events: CalendarEvent[];
   tasks: Task[];
   users: User[];
+  projects: Project[];
+  currentUserId: string;
   onUpdateDueDate?: (taskId: string, newDate: Date) => void;
   onTaskClick?: (task: Task) => void;
+  onCreateEvent?: (eventData: Partial<CalendarEvent>) => Promise<void>;
+  onUpdateEvent?: (eventId: string, eventData: Partial<CalendarEvent>) => Promise<void>;
+  onDeleteEvent?: (eventId: string) => Promise<void>;
 }
 
-export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClick }: TeamCalendarProps) {
+export function TeamCalendar({ events, tasks, users, projects, currentUserId, onUpdateDueDate, onTaskClick, onCreateEvent, onUpdateEvent, onDeleteEvent }: TeamCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [eventDefaultDate, setEventDefaultDate] = useState<Date | null>(null);
   const { t, lang } = useLanguage();
 
   const eventTypeColors: Record<string, string> = {
@@ -68,6 +77,31 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
   const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const handleToday = () => setCurrentDate(new Date());
+
+  const handleCreateEvent = (date?: Date) => {
+    setEditingEvent(null);
+    setEventDefaultDate(date || selectedDate || new Date());
+    setIsEventModalOpen(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setIsEventModalOpen(true);
+  };
+
+  const handleSaveEvent = async (eventData: Partial<CalendarEvent>) => {
+    if (editingEvent) {
+      await onUpdateEvent?.(editingEvent.id, eventData);
+    } else {
+      await onCreateEvent?.(eventData);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (confirm('ต้องการลบ event นี้ใช่หรือไม่?')) {
+      await onDeleteEvent?.(eventId);
+    }
+  };
 
   const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
   const selectedDateTasks = selectedDate ? getTasksForDate(selectedDate) : [];
@@ -132,6 +166,13 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
                 📅 {t.calendar.dragToMove || 'Drop on a date to move'}
               </span>
             )}
+            <button
+              onClick={() => handleCreateEvent()}
+              className="px-4 py-2 text-sm bg-[var(--orange)] hover:bg-[var(--orange)]/90 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Event
+            </button>
             <button onClick={handleToday} className="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
               {t.calendar.today}
             </button>
@@ -165,7 +206,7 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
                 onDragLeave={() => setDragOverDate(null)}
                 onDrop={(e) => handleDateDrop(e, date)}
                 className={cn(
-                  "min-h-[100px] p-2 rounded-lg border transition-all duration-200 text-left cursor-pointer",
+                  "group/cell relative min-h-[100px] p-2 rounded-lg border transition-all duration-200 text-left cursor-pointer",
                   "hover:border-white/20 hover:bg-white/5",
                   !isCurrentMonth && "opacity-40",
                   isToday && "border-[var(--orange)]/50 bg-[var(--orange)]/5",
@@ -173,9 +214,18 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
                   isDragOver && "border-[var(--orange)] bg-[var(--orange)]/20 scale-[1.02] shadow-lg shadow-[var(--orange)]/10"
                 )}
               >
-                <span className={cn("text-sm font-medium", isToday ? "text-[var(--orange)]" : "text-white")}>
-                  {format(date, 'd')}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className={cn("text-sm font-medium", isToday ? "text-[var(--orange)]" : "text-white")}>
+                    {format(date, 'd')}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleCreateEvent(date); }}
+                    className="opacity-0 group-hover/cell:opacity-100 p-1 hover:bg-[var(--orange)]/20 rounded transition-opacity"
+                    title="เพิ่ม Event"
+                  >
+                    <Plus className="w-3 h-3 text-[var(--orange)]" />
+                  </button>
+                </div>
 
                 {/* Task items (draggable) */}
                 {dayTasks.slice(0, 2).map(task => (
@@ -248,6 +298,26 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
             <div className="space-y-2">
               {selectedDateTasks.map(task => {
                 const assignees = users.filter(u => task.assignees.includes(u.id));
+                
+                // Priority config with Thai labels and emojis
+                const priorityConfig = {
+                  urgent: { label: '🔥 ด่วนมาก', color: '#dc2626', bgColor: '#dc262620' },
+                  high: { label: '⚡ สำคัญ', color: '#f97316', bgColor: '#f9731620' },
+                  medium: { label: '📄 ปานกลาง', color: '#3b82f6', bgColor: '#3b82f620' },
+                  low: { label: '🌿 ต่ำ', color: '#22c55e', bgColor: '#22c55e20' }
+                };
+
+                // Status config with Thai labels
+                const statusConfig = {
+                  'todo': { label: 'รอดำเนินการ', color: '#9ca3af' },
+                  'in-progress': { label: 'กำลังดำเนินการ', color: '#3b82f6' },
+                  'review': { label: 'รอตรวจสอบ', color: '#f59e0b' },
+                  'done': { label: 'เสร็จสิ้น', color: '#22c55e' }
+                };
+
+                const priority = priorityConfig[task.priority] || priorityConfig.medium;
+                const status = statusConfig[task.status] || statusConfig.todo;
+
                 return (
                   <div
                     key={task.id}
@@ -258,14 +328,22 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
                     className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: priorityColors[task.priority] }} />
+                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: priority.color }} />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-white text-sm truncate group-hover:text-[var(--orange)] transition-colors">{task.title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: `${priorityColors[task.priority]}20`, color: priorityColors[task.priority] }}>
-                            {task.priority}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{ backgroundColor: priority.bgColor, color: priority.color }}
+                          >
+                            {priority.label}
                           </span>
-                          <span className="text-xs text-gray-500">{task.status}</span>
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{ backgroundColor: `${status.color}20`, color: status.color }}
+                          >
+                            {status.label}
+                          </span>
                         </div>
                         {assignees.length > 0 && (
                           <div className="flex -space-x-1 mt-2">
@@ -290,22 +368,56 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
             <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Events ({selectedDateEvents.length})</h4>
             <div className="space-y-2">
               {selectedDateEvents.map(event => {
-                const user = users.find(u => u.id === event.userId);
+                const creator = users.find(u => u.id === event.userId);
+                const eventAttendees = event.attendees 
+                  ? users.filter(u => event.attendees.includes(u.id))
+                  : [];
                 return (
-                  <div key={event.id} className="p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                  <div
+                    key={event.id}
+                    className="group p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                    onClick={() => handleEditEvent(event)}
+                  >
                     <div className="flex items-start gap-3">
                       <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: eventTypeColors[event.type] }} />
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-white text-sm truncate">{event.title}</h4>
+                        <h4 className="font-medium text-white text-sm truncate group-hover:text-[var(--orange)] transition-colors">{event.title}</h4>
                         {event.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{event.description}</p>}
                         <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {format(new Date(event.startTime), 'HH:mm')} - {format(new Date(event.endTime), 'HH:mm')}
                           </span>
-                          {user && <span>{user.name}</span>}
                         </div>
+                        {eventAttendees.length > 0 && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <span className="text-xs text-gray-500">ผู้เกี่ยวข้อง:</span>
+                            <div className="flex -space-x-1">
+                              {eventAttendees.slice(0, 3).map(u => (
+                                <img 
+                                  key={u.id} 
+                                  src={u.avatar} 
+                                  alt={u.name} 
+                                  className="w-5 h-5 rounded-full border border-[#1a1a1a]" 
+                                  title={u.name} 
+                                />
+                              ))}
+                              {eventAttendees.length > 3 && (
+                                <div className="w-5 h-5 rounded-full bg-gray-700 border border-[#1a1a1a] flex items-center justify-center text-[10px] text-gray-300">
+                                  +{eventAttendees.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-opacity"
+                        title="ลบ Event"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-400" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -328,6 +440,22 @@ export function TeamCalendar({ events, tasks, users, onUpdateDueDate, onTaskClic
           </div>
         )}
       </div>
+
+      {/* Event Modal */}
+      <EventModal
+        isOpen={isEventModalOpen}
+        onClose={() => {
+          setIsEventModalOpen(false);
+          setEditingEvent(null);
+          setEventDefaultDate(null);
+        }}
+        onSave={handleSaveEvent}
+        event={editingEvent}
+        users={users}
+        projects={projects}
+        currentUserId={currentUserId}
+        defaultDate={eventDefaultDate || undefined}
+      />
     </div>
   );
 }

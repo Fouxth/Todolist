@@ -240,83 +240,77 @@ export const useStore = () => {
 
   // Time Tracking (optimistic update + API call)
   const startTimeTracking = useCallback(async (taskId: string) => {
-    // Optimistic local update
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const newEntry = {
-          id: `te${Date.now()}`,
-          userId: currentUser.id,
-          startTime: new Date(),
-          duration: 0
-        };
-        return {
-          ...task,
-          timeTracking: {
-            estimated: task.timeTracking?.estimated || 0,
-            spent: task.timeTracking?.spent || 0,
-            entries: [...(task.timeTracking?.entries || []), newEntry]
-          }
-        };
-      }
-      return task;
-    }));
-    // Persist: ensure time tracking record exists
     try {
-      const task = tasksRef.current.find(t => t.id === taskId);
-      await apiFetch(`/tasks/${taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          timeTracking: {
-            estimated: task?.timeTracking?.estimated || 0,
-            spent: task?.timeTracking?.spent || 0
-          }
-        })
+      // Call the new backend endpoint to create the entry
+      const entry = await apiFetch(`/tasks/${taskId}/time-tracking/start`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: currentUser.id })
       });
+
+      // Update local state with the real entry from database
+      setTasks(prev => prev.map(task => {
+        if (task.id === taskId) {
+          return {
+            ...task,
+            timeTracking: {
+              estimated: task.timeTracking?.estimated || 0,
+              spent: task.timeTracking?.spent || 0,
+              entries: [...(task.timeTracking?.entries || []), entry]
+            }
+          };
+        }
+        return task;
+      }));
     } catch (error) {
-      console.error('Failed to persist time tracking start:', error);
+      console.error('Failed to start time tracking:', error);
+      // Revert optimistic update on error
+      setTasks(prev => prev.map(task => {
+        if (task.id === taskId) {
+          return {
+            ...task,
+            timeTracking: {
+              ...task.timeTracking,
+              entries: task.timeTracking?.entries.filter(e => !e.id.startsWith('te')) || []
+            }
+          };
+        }
+        return task;
+      }));
     }
   }, [currentUser]);
 
   const stopTimeTracking = useCallback(async (taskId: string, entryId: string, description?: string) => {
-    let newSpent = 0;
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId && task.timeTracking) {
-        const endTime = new Date();
-        const updatedEntries = task.timeTracking.entries.map(entry => {
-          if (entry.id === entryId) {
-            const duration = Math.floor((endTime.getTime() - new Date(entry.startTime).getTime()) / 60000);
-            return { ...entry, endTime, duration, description };
-          }
-          return entry;
-        });
-        const totalSpent = updatedEntries.reduce((sum, e) => sum + e.duration, 0);
-        newSpent = totalSpent;
-
-        return {
-          ...task,
-          timeTracking: {
-            ...task.timeTracking,
-            spent: totalSpent,
-            entries: updatedEntries
-          }
-        };
-      }
-      return task;
-    }));
-    // Persist spent time to server
     try {
-      const task = tasksRef.current.find(t => t.id === taskId);
-      await apiFetch(`/tasks/${taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          timeTracking: {
-            estimated: task?.timeTracking?.estimated || 0,
-            spent: newSpent || task?.timeTracking?.spent || 0
-          }
-        })
+      // Call the backend endpoint to stop tracking
+      const updatedEntry = await apiFetch(`/tasks/${taskId}/time-tracking/stop`, {
+        method: 'POST',
+        body: JSON.stringify({ entryId, description })
       });
+
+      // Update local state with the updated entry
+      setTasks(prev => prev.map(task => {
+        if (task.id === taskId && task.timeTracking) {
+          const updatedEntries = task.timeTracking.entries.map(entry => {
+            if (entry.id === entryId) {
+              return updatedEntry;
+            }
+            return entry;
+          });
+          const totalSpent = updatedEntries.reduce((sum, e) => sum + e.duration, 0);
+
+          return {
+            ...task,
+            timeTracking: {
+              ...task.timeTracking,
+              spent: totalSpent,
+              entries: updatedEntries
+            }
+          };
+        }
+        return task;
+      }));
     } catch (error) {
-      console.error('Failed to persist time tracking stop:', error);
+      console.error('Failed to stop time tracking:', error);
     }
   }, []);
 

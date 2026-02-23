@@ -58,14 +58,14 @@ const th = {
 
     // Kanban Board
     kanban: {
-        todo: 'ยังไม่เริ่ม',
-        inProgress: 'กำลังทำ',
-        review: 'ตรวจสอบ',
-        done: 'เสร็จแล้ว',
+        todo: 'รอดำเนินการ',
+        inProgress: 'กำลังดำเนินการ',
+        review: 'รอตรวจสอบ',
+        done: 'เสร็จสิ้น',
         noTasks: 'ไม่มีงาน',
         addTask: 'เพิ่มงาน',
         taskBoard: 'บอร์ดงาน',
-        taskBoardDesc: 'ลากแล้ววางงานเพื่ออัปเดตสถานะ',
+        taskBoardDesc: 'ลากและวางงานเพื่ออัปเดตสถานะ',
         dropHere: 'วางที่นี่',
     },
 
@@ -77,6 +77,8 @@ const th = {
         low: 'ต่ำ',
         overdue: 'เลยกำหนด',
         progress: 'ความคืบหน้า',
+        readOnly: 'ดูอย่างเดียว',
+        notAssigned: 'ไม่ได้รับมอบหมาย',
     },
 
     // Task Modal
@@ -107,6 +109,7 @@ const th = {
         noSprint: 'ไม่มีสปรินท์',
         preview: 'ดูตัวอย่าง',
         edit: 'แก้ไข',
+        readOnlyNotice: 'คุณสามารถดูและแสดงความคิดเห็นได้เท่านั้น (ไม่ได้รับมอบหมายงานนี้)',
     },
 
     // Projects
@@ -128,6 +131,9 @@ const th = {
         allTasks: 'งานทั้งหมด',
         tasks: 'งาน',
         subtitle: 'จัดการและติดตามงานของทีม',
+        myTasks: 'งานของฉัน',
+        myTasksSubtitle: 'งานที่คุณได้รับมอบหมายทั้งหมด',
+        allProjects: 'ทุกโปรเจกต์',
     },
 
     // Team
@@ -411,6 +417,8 @@ const th = {
         cancel: 'ยกเลิก',
         confirm: 'ยืนยัน',
         delete: 'ลบ',
+        back: 'กลับ',
+        overdue: 'เลยกำหนด',
         deleteConfirmTitle: 'ยืนยันการลบ',
         deleteConfirmDesc: 'คุณแน่ใจหรือว่าต้องการลบรายการนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
         createProject: 'สร้างโปรเจคใหม่',

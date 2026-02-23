@@ -22,36 +22,64 @@ interface TaskCardProps {
   onStartTimeTracking?: () => void;
   onStopTimeTracking?: (taskId: string, entryId: string, description?: string) => void;
   showDragHandle?: boolean;
+  currentUserId?: string;
 }
 
-export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, onStopTimeTracking, showDragHandle }: TaskCardProps) {
+export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, onStopTimeTracking, showDragHandle, currentUserId }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { t } = useLanguage();
 
-  // Check if there's an active time entry (no endTime)
-  const activeEntry = task.timeTracking?.entries?.find(e => !e.endTime);
-  const isTracking = !!activeEntry;
+  // Find all active entries (no endTime) from any user
+  const activeEntries = task.timeTracking?.entries?.filter(e => !e.endTime) || [];
+  const isTracking = activeEntries.length > 0;
+  
+  // Find all users who are tracking
+  const trackingUsers = activeEntries
+    .map(entry => users.find(u => u.id === entry.userId))
+    .filter(Boolean) as User[];
 
   const priorityConfig = {
-    urgent: { color: 'text-red-400 bg-red-400/10 border-red-400/20', label: t.task.urgent },
-    high: { color: 'text-orange-400 bg-orange-400/10 border-orange-400/20', label: t.task.high },
-    medium: { color: 'text-blue-400 bg-blue-400/10 border-blue-400/20', label: t.task.medium },
-    low: { color: 'text-green-400 bg-green-400/10 border-green-400/20', label: t.task.low }
+    urgent: {
+      color: 'text-red-500 bg-red-500/20 border-red-500/50 shadow-sm shadow-red-500/20',
+      label: '🔥 ' + t.task.urgent,
+      bgGradient: 'from-red-500/10 to-transparent'
+    },
+    high: {
+      color: 'text-orange-500 bg-orange-500/20 border-orange-500/50 shadow-sm shadow-orange-500/20',
+      label: '⚡ ' + t.task.high,
+      bgGradient: 'from-orange-500/10 to-transparent'
+    },
+    medium: {
+      color: 'text-blue-500 bg-blue-500/15 border-blue-500/30',
+      label: '📄 ' + t.task.medium,
+      bgGradient: 'from-blue-500/10 to-transparent'
+    },
+    low: {
+      color: 'text-green-500 bg-green-500/15 border-green-500/30',
+      label: '🌿 ' + t.task.low,
+      bgGradient: 'from-green-500/10 to-transparent'
+    }
   };
 
   const assignees = users.filter(u => task.assignees.includes(u.id));
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const totalSubtasks = task.subtasks.length;
   const progress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
+  const isAssignedToMe = currentUserId ? task.assignees.includes(currentUserId) : true;
 
   const isOverdue = task.dueDate && isPast(task.dueDate) && !isToday(task.dueDate) && task.status !== 'done';
 
   const handleTimeTracking = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isTracking && activeEntry && onStopTimeTracking) {
-      onStopTimeTracking(task.id, activeEntry.id);
-    } else if (!isTracking && onStartTimeTracking) {
+    // Find current user's active entry
+    const myActiveEntry = currentUserId 
+      ? activeEntries.find(entry => entry.userId === currentUserId)
+      : null;
+    
+    if (myActiveEntry && onStopTimeTracking) {
+      onStopTimeTracking(task.id, myActiveEntry.id);
+    } else if (!myActiveEntry && onStartTimeTracking) {
       onStartTimeTracking();
     }
   };
@@ -72,9 +100,21 @@ export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, 
       }}
     >
       {/* Drag handle */}
-      {showDragHandle && (
+      {showDragHandle && isAssignedToMe && (
         <div className="absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
           <GripVertical className="w-4 h-4 text-gray-500" />
+        </div>
+      )}
+      
+      {/* Not assigned indicator */}
+      {!isAssignedToMe && currentUserId && (
+        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="px-2 py-1 text-[10px] font-medium rounded-md bg-gray-500/20 text-gray-400 border border-gray-500/30 flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            {t.task.readOnly}
+          </span>
         </div>
       )}
 
@@ -82,22 +122,27 @@ export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, 
       <div
         className={cn(
           "absolute left-0 top-4 bottom-4 w-1 rounded-full transition-all duration-300",
-          isHovered && "top-2 bottom-2"
+          isHovered && "top-2 bottom-2 w-1.5"
         )}
         style={{
           backgroundColor:
-            task.priority === 'urgent' ? '#f44336' :
-              task.priority === 'high' ? '#ff6b35' :
-                task.priority === 'medium' ? '#2196f3' : '#4caf50'
+            task.priority === 'urgent' ? '#ef4444' :
+              task.priority === 'high' ? '#f97316' :
+                task.priority === 'medium' ? '#3b82f6' : '#22c55e',
+          boxShadow: isHovered 
+            ? task.priority === 'urgent' ? '0 0 10px #ef4444' :
+              task.priority === 'high' ? '0 0 10px #f97316' :
+                task.priority === 'medium' ? '0 0 8px #3b82f6' : '0 0 8px #22c55e'
+            : 'none'
         }}
       />
 
       <div className="pl-3">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={cn(
-              "px-2 py-0.5 text-xs font-medium rounded-full border",
+              "px-2.5 py-1 text-xs font-semibold rounded-lg border",
               priorityConfig[task.priority].color
             )}>
               {priorityConfig[task.priority].label}
@@ -105,6 +150,15 @@ export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, 
             {isOverdue && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
                 {t.task.overdue}
+              </span>
+            )}
+            {isTracking && trackingUsers.length > 0 && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[var(--orange)]/10 text-[var(--orange)] border border-[var(--orange)]/20 flex items-center gap-1 animate-pulse">
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--orange)]" />
+                {trackingUsers.length === 1 
+                  ? `${trackingUsers[0].name} กำลังจับเวลา`
+                  : `${trackingUsers.length} คนกำลังจับเวลา`
+                }
               </span>
             )}
           </div>
@@ -209,21 +263,50 @@ export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, 
 
           {/* Meta info */}
           <div className="flex items-center gap-3 text-gray-400">
-            {/* Time tracking */}
-            <button
-              onClick={handleTimeTracking}
-              className={cn(
-                "flex items-center gap-1 text-xs hover:text-white transition-colors",
-                isTracking && "text-[var(--orange)]"
+            {/* Time tracking with user indicator */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleTimeTracking}
+                className={cn(
+                  "flex items-center gap-1 text-xs hover:text-white transition-colors",
+                  isTracking && "text-[var(--orange)] animate-pulse"
+                )}
+                title={
+                  isTracking && trackingUsers.length > 0
+                    ? trackingUsers.map(u => u.name).join(', ') + ' กำลังจับเวลา'
+                    : 'เริ่มจับเวลา'
+                }
+              >
+                {isTracking ? (
+                  <Pause className="w-3.5 h-3.5 fill-current" />
+                ) : (
+                  <Play className="w-3.5 h-3.5" />
+                )}
+                {task.timeTracking ? `${Math.floor(task.timeTracking.spent / 60)}h` : '0h'}
+              </button>
+              {trackingUsers.length > 0 && (
+                <div className="flex -space-x-1">
+                  {trackingUsers.slice(0, 3).map((user, idx) => (
+                    <img
+                      key={user.id}
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-4 h-4 rounded-full border border-[var(--orange)] ring-1 ring-[var(--orange)]/30"
+                      title={`${user.name} กำลังจับเวลา`}
+                      style={{ zIndex: 10 - idx }}
+                    />
+                  ))}
+                  {trackingUsers.length > 3 && (
+                    <div 
+                      className="w-4 h-4 rounded-full bg-[var(--orange)]/20 border border-[var(--orange)] flex items-center justify-center text-[8px] text-[var(--orange)] font-bold"
+                      title={trackingUsers.slice(3).map(u => u.name).join(', ')}
+                    >
+                      +{trackingUsers.length - 3}
+                    </div>
+                  )}
+                </div>
               )}
-            >
-              {isTracking ? (
-                <Pause className="w-3.5 h-3.5" />
-              ) : (
-                <Play className="w-3.5 h-3.5" />
-              )}
-              {task.timeTracking ? `${Math.floor(task.timeTracking.spent / 60)}h` : '0h'}
-            </button>
+            </div>
 
             {/* Comments */}
             {task.comments.length > 0 && (

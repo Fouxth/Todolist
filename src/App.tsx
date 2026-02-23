@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { ProjectDetailPage } from '@/pages/ProjectDetailPage';
 import type { Task, TaskStatus, TaskFilter, User } from '@/types';
 import { cn } from '@/lib/utils';
 import { Menu, Undo2, Redo2 } from 'lucide-react';
@@ -58,6 +59,8 @@ function App() {
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [myTasksProjectFilter, setMyTasksProjectFilter] = useState<string>('all');
+  const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   const store = useStore();
@@ -98,6 +101,19 @@ function App() {
     store.tasks.forEach(t => t.tags?.forEach(tag => tagSet.add(tag)));
     return Array.from(tagSet).sort();
   }, [store.tasks]);
+
+  // Filter tasks for "My Tasks" view - only show tasks assigned to current user
+  const myTasks = useMemo(() => {
+    if (!authUser) return [];
+    let tasks = store.tasks.filter(t => t.assignees?.includes(authUser.id));
+    
+    // Apply project filter if not "all"
+    if (myTasksProjectFilter !== 'all') {
+      tasks = tasks.filter(t => t.projectId === myTasksProjectFilter);
+    }
+    
+    return tasks;
+  }, [store.tasks, authUser, myTasksProjectFilter]);
 
   const filteredTasks = useMemo(() => {
     const filter: TaskFilter = {
@@ -219,8 +235,8 @@ function App() {
   };
 
   const handleProjectClick = (projectId: string) => {
-    setSelectedProject(projectId);
-    setActiveView('tasks');
+    setViewingProjectId(projectId);
+    setActiveView('project-detail');
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -266,11 +282,23 @@ function App() {
   };
 
   const renderContent = () => {
+    // Debug: Log tasks to verify what's loaded
+    console.log('📊 Dashboard Stats Debug:', {
+      totalTasksInStore: store.tasks.length,
+      filteredTasksCount: filteredTasks.length,
+      tasksByStatus: {
+        todo: store.tasks.filter(t => t.status === 'todo').length,
+        'in-progress': store.tasks.filter(t => t.status === 'in-progress').length,
+        review: store.tasks.filter(t => t.status === 'review').length,
+        done: store.tasks.filter(t => t.status === 'done').length
+      }
+    });
+
     switch (activeView) {
       case 'dashboard':
         return (
           <div className="space-y-8">
-            <StatsCards stats={store.stats} tasks={store.tasks} />
+            <StatsCards stats={store.stats} tasks={filteredTasks} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -303,16 +331,32 @@ function App() {
       case 'tasks':
         return (
           <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white mb-1">
-                {selectedProject
-                  ? `${t.tasksPage.tasks} - ${store.projects.find(p => p.id === selectedProject)?.name}`
-                  : t.tasksPage.allTasks}
-              </h2>
-              <p className="text-gray-400">{t.tasksPage.subtitle}</p>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">
+                  {t.tasksPage.myTasks || 'งานของฉัน'}
+                </h2>
+                <p className="text-gray-400">{t.tasksPage.myTasksSubtitle || 'งานที่คุณได้รับมอบหมายทั้งหมด'}</p>
+              </div>
+              
+              {/* Project Filter Dropdown */}
+              <div className="min-w-[200px]">
+                <select
+                  value={myTasksProjectFilter}
+                  onChange={(e) => setMyTasksProjectFilter(e.target.value)}
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[var(--orange)] transition-colors"
+                >
+                  <option value="all">{t.tasksPage.allProjects || 'ทุกโปรเจกต์'}</option>
+                  {store.projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <KanbanBoard
-              tasks={filteredTasks}
+              tasks={myTasks}
               users={store.users}
               onTaskClick={handleEditTask}
               onStatusChange={handleStatusChange}
@@ -340,6 +384,29 @@ function App() {
                 toast.error(t.common.deleteError);
               }
             }}
+          />
+        );
+
+      case 'project-detail':
+        const viewingProject = store.projects.find(p => p.id === viewingProjectId);
+        if (!viewingProject) {
+          setActiveView('projects');
+          return null;
+        }
+        return (
+          <ProjectDetailPage
+            project={viewingProject}
+            tasks={store.tasks}
+            users={store.users}
+            teams={store.teams}
+            onBack={() => setActiveView('projects')}
+            onTaskClick={handleEditTask}
+            onStatusChange={handleStatusChange}
+            onCreateTask={handleCreateTask}
+            onDeleteTask={handleDeleteTask}
+            onStartTimeTracking={store.startTimeTracking}
+            onStopTimeTracking={store.stopTimeTracking}
+            currentUserId={authUser?.id}
           />
         );
 
@@ -375,8 +442,30 @@ function App() {
               events={store.calendarEvents}
               tasks={store.tasks}
               users={store.users}
+              projects={store.projects}
+              currentUserId={authUser?.id || ''}
               onUpdateDueDate={handleUpdateDueDate}
               onTaskClick={handleEditTask}
+              onCreateEvent={store.addCalendarEvent}
+              onUpdateEvent={async (eventId, eventData) => {
+                // Update event via API
+                const token = localStorage.getItem('auth_token');
+                const res = await fetch(`/api/events/${eventId}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                  },
+                  body: JSON.stringify(eventData)
+                });
+                if (res.ok) {
+                  await store.retry();
+                  toast.success('✅ อัพเดท Event สำเร็จ');
+                } else {
+                  toast.error('❌ ไม่สามารถอัพเดท Event ได้');
+                }
+              }}
+              onDeleteEvent={store.deleteCalendarEvent}
             />
           </div>
         );

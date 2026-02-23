@@ -155,7 +155,8 @@ export interface CalendarEvent {
   startTime: Date;
   endTime: Date;
   type: 'task' | 'meeting' | 'deadline' | 'reminder';
-  userId: string;
+  userId: string; // Creator of the event
+  attendees: string[]; // Array of user IDs who should receive notifications
   projectId?: string;
   taskId?: string;
   color?: string;

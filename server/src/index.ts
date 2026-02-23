@@ -29,7 +29,8 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Trust proxy for proper IP detection behind load balancers
-app.set('trust proxy', true);
+// Set to 1 to trust the first proxy (for development/single proxy)
+app.set('trust proxy', 1);
 
 // Socket.io
 const io = new SocketIOServer(httpServer, {

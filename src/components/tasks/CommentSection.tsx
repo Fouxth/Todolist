@@ -200,17 +200,24 @@ export function CommentSection({ taskId }: CommentSectionProps) {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="flex gap-2 mt-3 pt-3 border-t border-white/5">
+            <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
                 <input
                     type="text"
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSubmit(e as any);
+                        }
+                    }}
                     placeholder={t.comment.placeholder}
                     className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--orange)]/50 transition-all"
                     disabled={sending}
                 />
                 <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={!newComment.trim() || sending}
                     className={cn(
                         "p-2 rounded-lg transition-all",
@@ -225,7 +232,7 @@ export function CommentSection({ taskId }: CommentSectionProps) {
                         <Send className="w-4 h-4" />
                     )}
                 </button>
-            </form>
+            </div>
         </div>
     );
 }

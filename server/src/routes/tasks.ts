@@ -81,7 +81,7 @@ tasksRouter.get('/:id', async (req, res) => {
                     include: { user: { select: { id: true, name: true, avatar: true } } }
                 },
                 attachments: true,
-                timeTracking: { include: { entries: true } }
+                timeTracking: { include: { entries: { include: { user: true } } } }
             }
         });
 
@@ -146,7 +146,7 @@ tasksRouter.post('/', async (req, res) => {
                 subtasks: true,
                 comments: true,
                 attachments: true,
-                timeTracking: { include: { entries: true } },
+                timeTracking: { include: { entries: { include: { user: true } } } },
                 dependencies: { include: { dependsOn: { select: { id: true, title: true, status: true } } } },
                 dependedOnBy: { include: { task: { select: { id: true, title: true, status: true } } } }
             }
@@ -313,7 +313,7 @@ tasksRouter.patch('/:id', async (req, res) => {
                 subtasks: true,
                 comments: true,
                 attachments: true,
-                timeTracking: { include: { entries: true } },
+                timeTracking: { include: { entries: { include: { user: true } } } },
                 dependencies: { include: { dependsOn: { select: { id: true, title: true, status: true } } } },
                 dependedOnBy: { include: { task: { select: { id: true, title: true, status: true } } } }
             }
@@ -619,5 +619,120 @@ tasksRouter.post('/ai/suggest', async (req, res) => {
     } catch (error) {
         console.error('Error generating suggestions:', error);
         res.status(500).json({ error: 'Failed to generate suggestions' });
+    }
+});
+
+// POST /api/tasks/:id/time-tracking/start - Start time tracking
+tasksRouter.post('/:id/time-tracking/start', async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const userId = req.body.userId || (req as any).user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'User ID required' });
+        }
+
+        // Create time tracking if doesn't exist
+        let timeTracking = await prisma.timeTracking.findUnique({
+            where: { taskId },
+            include: { entries: true }
+        });
+
+        if (!timeTracking) {
+            timeTracking = await prisma.timeTracking.create({
+                data: {
+                    taskId,
+                    estimated: 0,
+                    spent: 0
+                },
+                include: { entries: true }
+            });
+        }
+
+        // Check if user already has an active entry for this task
+        const activeEntry = timeTracking.entries.find(
+            e => e.userId === userId && !e.endTime
+        );
+
+        if (activeEntry) {
+            return res.status(400).json({ error: 'Already tracking time for this task' });
+        }
+
+        // Create new time entry
+        const entry = await prisma.timeEntry.create({
+            data: {
+                timeTrackingId: timeTracking.id,
+                userId,
+                startTime: new Date(),
+                duration: 0
+            },
+            include: {
+                user: true
+            }
+        });
+
+        res.json(entry);
+    } catch (error) {
+        console.error('Error starting time tracking:', error);
+        res.status(500).json({ error: 'Failed to start time tracking' });
+    }
+});
+
+// POST /api/tasks/:id/time-tracking/stop - Stop time tracking
+tasksRouter.post('/:id/time-tracking/stop', async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const { entryId, description } = req.body;
+
+        if (!entryId) {
+            return res.status(400).json({ error: 'Entry ID required' });
+        }
+
+        // Find the entry
+        const entry = await prisma.timeEntry.findUnique({
+            where: { id: entryId },
+            include: { timeTracking: true }
+        });
+
+        if (!entry || entry.timeTracking.taskId !== taskId) {
+            return res.status(404).json({ error: 'Time entry not found' });
+        }
+
+        if (entry.endTime) {
+            return res.status(400).json({ error: 'Time entry already stopped' });
+        }
+
+        // Calculate duration in minutes
+        const endTime = new Date();
+        const duration = Math.floor((endTime.getTime() - entry.startTime.getTime()) / 60000);
+
+        // Update the entry
+        const updatedEntry = await prisma.timeEntry.update({
+            where: { id: entryId },
+            data: {
+                endTime,
+                duration,
+                description
+            },
+            include: {
+                user: true
+            }
+        });
+
+        // Update total spent time
+        const allEntries = await prisma.timeEntry.findMany({
+            where: { timeTrackingId: entry.timeTrackingId }
+        });
+        const totalSpent = allEntries.reduce((sum, e) => sum + e.duration, 0);
+
+        await prisma.timeTracking.update({
+            where: { id: entry.timeTrackingId },
+            data: { spent: totalSpent }
+        });
+
+        res.json(updatedEntry);
+    } catch (error) {
+        console.error('Error stopping time tracking:', error);
+        res.status(500).json({ error: 'Failed to stop time tracking' });
     }
 });

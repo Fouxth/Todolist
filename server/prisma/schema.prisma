@@ -257,7 +257,8 @@ model CalendarEvent {
   startTime   DateTime
   endTime     DateTime
   type        String   @default("task") // task, meeting, deadline, reminder
-  userId      String
+  userId      String   // Creator of the event
+  attendees   String[] @default([]) // Array of user IDs who should receive notifications
   projectId   String?
   taskId      String?
   color       String?

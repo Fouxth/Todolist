@@ -15,6 +15,8 @@ interface KanbanBoardProps {
   onDeleteTask?: (taskId: string) => void;
   onStartTimeTracking?: (taskId: string) => void;
   onStopTimeTracking?: (taskId: string, entryId: string, description?: string) => void;
+  readOnly?: boolean;
+  currentUserId?: string;
 }
 
 interface Column {
@@ -25,10 +27,10 @@ interface Column {
 }
 
 const columns: Column[] = [
-  { id: 'todo', titleKey: 'todo', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.05)' },
-  { id: 'in-progress', titleKey: 'inProgress', color: '#ff6b35', bgColor: 'rgba(255, 107, 53, 0.05)' },
-  { id: 'review', titleKey: 'review', color: '#2196f3', bgColor: 'rgba(33, 150, 243, 0.05)' },
-  { id: 'done', titleKey: 'done', color: '#4caf50', bgColor: 'rgba(76, 175, 80, 0.05)' }
+  { id: 'todo', titleKey: 'todo', color: '#94a3b8', bgColor: 'rgba(148, 163, 184, 0.08)' },
+  { id: 'in-progress', titleKey: 'inProgress', color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.08)' },
+  { id: 'review', titleKey: 'review', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.08)' },
+  { id: 'done', titleKey: 'done', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.08)' }
 ];
 
 export function KanbanBoard({
@@ -39,7 +41,9 @@ export function KanbanBoard({
   onCreateTask,
   onDeleteTask,
   onStartTimeTracking,
-  onStopTimeTracking
+  onStopTimeTracking,
+  readOnly = false,
+  currentUserId
 }: KanbanBoardProps) {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -53,6 +57,32 @@ export function KanbanBoard({
   };
 
   const handleDragStart = (e: React.DragEvent, task: Task) => {
+    // Prevent drag if read-only
+    if (readOnly) {
+      e.preventDefault();
+      return;
+    }
+    
+    // Prevent drag if user not assigned to this task
+    // Check if assignees exists and is not empty, then check if current user is in it
+    const hasAssignees = task.assignees && Array.isArray(task.assignees) && task.assignees.length > 0;
+    const isAssigned = hasAssignees && currentUserId && task.assignees.includes(currentUserId);
+    
+    if (currentUserId && !isAssigned) {
+      e.preventDefault();
+      // Show a brief message
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-bounce';
+      toast.textContent = '⚠️ คุณไม่ได้รับมอบหมายงานนี้';
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2000);
+      return;
+    }
+    
     setDraggedTask(task);
     const el = e.currentTarget as HTMLElement;
     setDraggedEl(el);
@@ -114,7 +144,32 @@ export function KanbanBoard({
 
   const handleDrop = (e: React.DragEvent, columnId: TaskStatus) => {
     e.preventDefault();
-    if (draggedTask && draggedTask.status !== columnId) {
+    
+    if (!draggedTask) {
+      handleDragEnd();
+      return;
+    }
+
+    // Check if user is assigned to the task
+    const hasAssignees = draggedTask.assignees && Array.isArray(draggedTask.assignees) && draggedTask.assignees.length > 0;
+    const isAssigned = hasAssignees && currentUserId && draggedTask.assignees.includes(currentUserId);
+    
+    if (currentUserId && !isAssigned) {
+      // Show error message
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      toast.textContent = '❌ ไม่สามารถเปลี่ยนสถานะได้ - คุณไม่ได้รับมอบหมายงานนี้';
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2500);
+      handleDragEnd();
+      return;
+    }
+    
+    if (draggedTask.status !== columnId) {
       onStatusChange(draggedTask.id, columnId);
     }
     handleDragEnd();
@@ -169,20 +224,27 @@ export function KanbanBoard({
                 <button className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
                   <MoreHorizontal className="w-4 h-4 text-gray-400" />
                 </button>
-                <button
-                  onClick={() => onCreateTask(column.id)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4 text-gray-400" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => onCreateTask(column.id)}
+                    className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Column Content */}
             <div className="flex-1 p-3 space-y-1 min-h-[200px]">
-              {columnTasks.map((task, taskIndex) => {
+                  {columnTasks.map((task, taskIndex) => {
                 const isBeingDragged = draggedTask?.id === task.id;
                 const showDropBefore = isDragOver && dragOverIndex === taskIndex && !isBeingDragged;
+                
+                // Check if user is assigned
+                const hasAssignees = task.assignees && Array.isArray(task.assignees) && task.assignees.length > 0;
+                const isUserAssigned = !currentUserId || (hasAssignees && task.assignees.includes(currentUserId));
+                const canDrag = !readOnly && isUserAssigned;
 
                 return (
                   <div key={task.id}>
@@ -194,13 +256,22 @@ export function KanbanBoard({
                       </div>
                     )}
                     <div
-                      draggable
+                      draggable={canDrag}
                       onDragStart={(e) => handleDragStart(e, task)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => handleCardDragOver(e, taskIndex)}
+                      title={
+                        readOnly 
+                          ? 'โหมดดูอย่างเชียว' 
+                          : !isUserAssigned
+                            ? 'คุณต้องเป็นผู้รับผิดชอบถึงจะเปลี่ยนสถานะได้'
+                            : 'ลากเพื่อเปลี่ยนสถานะ'
+                      }
                       className={cn(
                         "transition-all duration-200 mb-2",
-                        isBeingDragged && "opacity-30 scale-95"
+                        isBeingDragged && "opacity-30 scale-95",
+                        readOnly && "cursor-not-allowed opacity-60",
+                        !isUserAssigned && "cursor-not-allowed opacity-75"
                       )}
                       style={{
                         animationDelay: `${taskIndex * 80}ms`,
@@ -211,10 +282,23 @@ export function KanbanBoard({
                         task={task}
                         users={users}
                         onClick={() => onTaskClick(task)}
-                        onDelete={onDeleteTask ? () => onDeleteTask(task.id) : undefined}
-                        onStartTimeTracking={onStartTimeTracking ? () => onStartTimeTracking(task.id) : undefined}
-                        onStopTimeTracking={onStopTimeTracking}
-                        showDragHandle
+                        onDelete={
+                          !readOnly && isUserAssigned && onDeleteTask 
+                            ? () => onDeleteTask(task.id) 
+                            : undefined
+                        }
+                        onStartTimeTracking={
+                          !readOnly && onStartTimeTracking 
+                            ? () => onStartTimeTracking(task.id) 
+                            : undefined
+                        }
+                        onStopTimeTracking={
+                          !readOnly && onStopTimeTracking
+                            ? onStopTimeTracking 
+                            : undefined
+                        }
+                        showDragHandle={canDrag}
+                        currentUserId={currentUserId}
                       />
                     </div>
                   </div>

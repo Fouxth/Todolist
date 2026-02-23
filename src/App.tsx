@@ -73,7 +73,7 @@ function App() {
   const { currentUser: authUser, token, isLoading: authLoading, logout, refreshUser } = useAuth();
   const alerts = useAlerts();
   const chatHook = useChats({ token, currentUserId: authUser?.id ?? '' });
-  const { notifications, unreadCount, markAsRead, markAllRead, deleteNotification } = useNotifications({ 
+  const { notifications, markAsRead, markAllRead, deleteNotification } = useNotifications({ 
     token,
     onNotification: (notification) => {
       // Skip alert popup for chat — handled by ChatPanel unread badge

@@ -60,7 +60,8 @@ export function CommentSection({ taskId }: CommentSectionProps) {
     // Real-time comments via socket
     useEffect(() => {
         if (!taskId || !token) return;
-        const socket: Socket = io({ auth: { token } });
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://nut-commands-reviewed-rolls.trycloudflare.com';
+        const socket: Socket = io(socketUrl, { auth: { token }, transports: ['polling'], path: '/socket.io' });
 
         socket.on(`task:${taskId}:comment`, (comment: Comment) => {
             setComments(prev => {

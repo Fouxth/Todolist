@@ -28,7 +28,7 @@ export function SettingsPage({ currentUser, lang, onLangChange: _onLangChange, o
     // Profile form state
     const [name, setName] = useState(currentUser.name);
     const [email, setEmail] = useState(currentUser.email);
-    const [department, setDepartment] = useState(currentUser.department || '');
+    const [department] = useState(currentUser.department || '');
     const [status, setStatus] = useState(currentUser.status);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);

@@ -47,7 +47,7 @@ const teamColors = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
 ];
 
-export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers, onMessageUser, onViewUserTasks, currentUserId, currentUserRole, onUpdateUser }: TeamMembersProps) {
+export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeamMember, onCreateTeam, onDeleteTeam, onInviteUser, onRefreshUsers, onMessageUser, onViewUserTasks: _onViewUserTasks, currentUserId, currentUserRole, onUpdateUser }: TeamMembersProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);

@@ -41,13 +41,16 @@ const io = new SocketIOServer(httpServer, {
             'http://localhost:5174',
             'http://localhost:4173',
             'https://dxv4th.vercel.app',
-            /\.vercel\.app$/
+            /\.vercel\.app$/,
+            /\.trycloudflare\.com$/
         ],
         methods: ['GET', 'POST'],
         credentials: true
     },
     allowEIO3: true,
-    transports: ['polling', 'websocket']
+    transports: ['polling', 'websocket'],
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Share io instance globally

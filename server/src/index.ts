@@ -28,6 +28,9 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for proper IP detection behind load balancers
+app.set('trust proxy', true);
+
 // Socket.io
 const io = new SocketIOServer(httpServer, {
     cors: {

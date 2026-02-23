@@ -386,7 +386,6 @@ const en: Translations = {
         submit: 'Sign In',
         loading: 'Signing in...',
         error: 'An error occurred',
-        testAccounts: 'Test accounts (password: password123)',
         loadingData: 'Loading data...',
         registerTab: 'Register',
         loginTab: 'Sign In',

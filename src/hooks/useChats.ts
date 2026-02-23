@@ -196,15 +196,11 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
                 method: 'PATCH',
                 headers: authHeader()
             });
-            setChats(prev => {
-                const updated = prev.map(c =>
-                    c.id === chatId ? { ...c, unreadCount: 0 } : c
-                );
-                computeTotal(updated);
-                return updated;
-            });
+            setChats(prev => prev.map(c =>
+                c.id === chatId ? { ...c, unreadCount: 0 } : c
+            ));
         } catch { /* ignore */ }
-    }, [token, authHeader, computeTotal]);
+    }, [token, authHeader]);
 
     // ─── Typing indicator ─────────────────────────────────────────────────────
     const sendTyping = useCallback((chatId: string, isTyping: boolean, userName: string) => {

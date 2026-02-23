@@ -270,6 +270,7 @@ export interface Chat {
   messages?: ChatMessage[];
   unreadCount?: number;
   myLastRead?: string;
+  memberReadAt?: Record<string, string>; // userId -> ISO readAt
 }
 
 // Undo/Redo Types

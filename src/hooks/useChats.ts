@@ -267,6 +267,16 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
             });
         });
 
+        // Read receipt: update memberReadAt for the chat
+        socket.on('chat:read', ({ chatId, userId, readAt }: { chatId: string; userId: string; readAt: string }) => {
+            setChats(prev => prev.map(c =>
+                c.id !== chatId ? c : {
+                    ...c,
+                    memberReadAt: { ...(c.memberReadAt ?? {}), [userId]: readAt }
+                }
+            ));
+        });
+
         socket.on('chat:message:deleted', ({ id, chatId }: { id: string; chatId: string }) => {
             setMessages(prev => ({
                 ...prev,

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Send, X, Reply, Trash2, Edit2, Check, ChevronUp } from 'lucide-react';
+import { Send, X, Reply, Trash2, Edit2, Check, CheckCheck, ChevronUp } from 'lucide-react';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -7,12 +7,13 @@ import { cn } from '@/lib/utils';
 interface MessageBubbleProps {
     message: ChatMessage;
     isOwn: boolean;
+    isRead: boolean;
     onReply: (msg: ChatMessage) => void;
     onDelete: (id: string) => void;
     onEdit: (id: string, content: string) => void;
 }
 
-export function MessageBubble({ message, isOwn, onReply, onDelete, onEdit }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, isRead, onReply, onDelete, onEdit }: MessageBubbleProps) {
     const [showActions, setShowActions] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(message.content);
@@ -100,8 +101,15 @@ export function MessageBubble({ message, isOwn, onReply, onDelete, onEdit }: Mes
                     </div>
                 )}
 
-                {/* Timestamp */}
-                <span className="text-[10px] text-muted-foreground px-1">{timeStr}</span>
+                {/* Timestamp + read receipt */}
+                <div className={cn('flex items-center gap-1 px-1', isOwn && 'justify-end')}>
+                    <span className="text-[10px] text-muted-foreground">{timeStr}</span>
+                    {isOwn && (
+                        isRead
+                            ? <CheckCheck className="w-3 h-3 text-[var(--orange)]" />
+                            : <Check className="w-3 h-3 text-muted-foreground" />
+                    )}
+                </div>
             </div>
 
             {/* Hover actions */}
@@ -250,6 +258,7 @@ interface ChatWindowProps {
     chatId: string;
     messages: ChatMessage[];
     currentUserId: string;
+    memberReadAt?: Record<string, string>;
     typingUsers?: { userId: string; userName: string }[];
     onSend: (content: string, replyToId?: string) => void;
     onDelete: (id: string) => void;
@@ -263,6 +272,7 @@ interface ChatWindowProps {
 export function ChatWindow({
     messages,
     currentUserId,
+    memberReadAt = {},
     typingUsers = [],
     onSend,
     onDelete,
@@ -324,16 +334,23 @@ export function ChatWindow({
                         </div>
 
                         <div className="space-y-2">
-                            {msgs.map(msg => (
-                                <MessageBubble
-                                    key={msg.id}
-                                    message={msg}
-                                    isOwn={msg.userId === currentUserId}
-                                    onReply={setReplyTo}
-                                    onDelete={onDelete}
-                                    onEdit={onEdit}
-                                />
-                            ))}
+                            {msgs.map(msg => {
+                                // Message is read if ANY other member has readAt > message.createdAt
+                                const isRead = Object.entries(memberReadAt).some(
+                                    ([uid, readAt]) => uid !== currentUserId && new Date(readAt) >= new Date(msg.createdAt)
+                                );
+                                return (
+                                    <MessageBubble
+                                        key={msg.id}
+                                        message={msg}
+                                        isOwn={msg.userId === currentUserId}
+                                        isRead={isRead}
+                                        onReply={setReplyTo}
+                                        onDelete={onDelete}
+                                        onEdit={onEdit}
+                                    />
+                                );
+                            })}
                         </div>
                     </div>
                 ))}

@@ -192,6 +192,7 @@ export function ChatPanel({ isOpen, onClose, chatHook, currentUser, users, proje
                             chatId={activeChatId}
                             messages={messages[activeChatId] ?? []}
                             currentUserId={currentUser.id}
+                            memberReadAt={chats.find(c => c.id === activeChatId)?.memberReadAt}
                             typingUsers={typingUsers[activeChatId]}
                             onSend={(content, replyToId) => sendMessage(activeChatId, content, replyToId)}
                             onDelete={deleteMessage}

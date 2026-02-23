@@ -41,7 +41,7 @@ chatsRouter.get('/', async (req: AuthRequest, res) => {
             orderBy: { chat: { updatedAt: 'desc' } }
         });
 
-        // Count unread for each chat
+        // Count unread for each chat and build memberReadAt map
         const chats = await Promise.all(memberships.map(async (m) => {
             const unreadCount = await prisma.chatMessage.count({
                 where: {
@@ -50,7 +50,18 @@ chatsRouter.get('/', async (req: AuthRequest, res) => {
                     createdAt: { gt: m.lastRead ?? new Date(0) }
                 }
             });
-            return { ...m.chat, unreadCount, myLastRead: m.lastRead };
+
+            // Build memberReadAt: { [userId]: lastRead ISO string }
+            const allMembers = await prisma.chatMember.findMany({
+                where: { chatId: m.chatId },
+                select: { userId: true, lastRead: true }
+            });
+            const memberReadAt: Record<string, string> = {};
+            allMembers.forEach(mem => {
+                if (mem.lastRead) memberReadAt[mem.userId] = mem.lastRead.toISOString();
+            });
+
+            return { ...m.chat, unreadCount, myLastRead: m.lastRead, memberReadAt };
         }));
 
         res.json(chats);
@@ -270,11 +281,15 @@ chatsRouter.patch('/:id/read', async (req: AuthRequest, res) => {
     try {
         const chatId = req.params.id as string;
         const userId = req.userId!;
+        const now = new Date();
 
         await prisma.chatMember.update({
             where: { chatId_userId: { chatId, userId } },
-            data: { lastRead: new Date() }
+            data: { lastRead: now }
         });
+
+        // Broadcast read receipt to everyone in the chat room
+        getIO().to(`chat:${chatId}`).emit('chat:read', { chatId, userId, readAt: now.toISOString() });
 
         res.json({ success: true });
     } catch (error) {

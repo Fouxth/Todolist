@@ -211,7 +211,10 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
     useEffect(() => {
         if (!token) return;
 
-        const url = import.meta.env.VITE_SOCKET_URL || '/';
+        // Always use relative URL so requests go through Vercel proxy (avoids mixed-content block)
+        const url = typeof window !== 'undefined' && window.location.protocol === 'https:'
+            ? window.location.origin
+            : (import.meta.env.VITE_SOCKET_URL || '/');
         const socket = io(url, {
             auth: { token },
             transports: ['polling'],

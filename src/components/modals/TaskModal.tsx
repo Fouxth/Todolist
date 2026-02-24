@@ -109,6 +109,8 @@ export function TaskModal({
     customDays: 7,
   });
 
+  // Only re-initialize form when the task ID changes (not on every background refresh)
+  // This prevents the form from resetting while the user is editing
   useEffect(() => {
     if (task) {
       setFormData({ ...task });
@@ -140,7 +142,8 @@ export function TaskModal({
       });
       setEstimatedTimeInput('');
     }
-  }, [task, defaultStatus, projects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id, defaultStatus]);
 
   if (!isOpen) return null;
 

@@ -216,11 +216,12 @@ tasksRouter.patch('/:id', async (req, res) => {
     try {
         const { assignees, tags, subtasks, timeTracking, dependencies, ...rawData } = req.body;
         const taskId = req.params.id;
-        const userId = req.body.updatedBy || req.body.createdBy;
+        // Use userId from auth middleware (req.userId), fallback to body fields
+        const userId = (req as any).userId || req.body.updatedBy || req.body.createdBy;
 
         // Whitelist only fields that exist in the Task Prisma model
         const allowedFields = ['title', 'description', 'status', 'priority', 'projectId',
-            'teamId', 'dueDate', 'sprintId', 'recurring', 'createdBy'];
+            'teamId', 'dueDate', 'sprintId', 'recurring'];
         const taskData: Record<string, unknown> = {};
         for (const key of allowedFields) {
             if (key in rawData) taskData[key] = rawData[key];
@@ -234,11 +235,15 @@ tasksRouter.patch('/:id', async (req, res) => {
             }
         });
 
-        // Update base task data (including recurring, sprintId)
-        const task = await prisma.task.update({
-            where: { id: taskId },
-            data: taskData
-        });
+        if (!oldTask) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        // Update base task data only if there are fields to update
+        // (avoids Prisma error when only subtasks/assignees/tags are being updated)
+        const task = Object.keys(taskData).length > 0
+            ? await prisma.task.update({ where: { id: taskId }, data: taskData })
+            : oldTask;
 
         // Track changes for notifications
         const changes: string[] = [];

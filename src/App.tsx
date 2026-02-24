@@ -616,7 +616,7 @@ function App() {
       />
 
       {/* Mobile Nav */}
-      <MobileNav activeView={activeView} onViewChange={setActiveView} />
+      <MobileNav activeView={activeView} onViewChange={setActiveView} userRole={authUser?.role} />
 
       {/* Main Content */}
       <main className={cn(

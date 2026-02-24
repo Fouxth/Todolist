@@ -14,21 +14,26 @@ import { useLanguage } from '@/i18n/LanguageContext';
 interface MobileNavProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  userRole?: string;
 }
 
-export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
+export function MobileNav({ activeView, onViewChange, userRole }: MobileNavProps) {
   const { t } = useLanguage();
 
-  const navItems = [
+  const allNavItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: t.sidebar.dashboard },
     { id: 'tasks', icon: CheckSquare, label: t.sidebar.tasks },
     { id: 'projects', icon: FolderKanban, label: t.sidebar.projects },
     { id: 'calendar', icon: Calendar, label: t.sidebar.calendar },
     { id: 'sprints', icon: Zap, label: t.sidebar.sprints },
     { id: 'team', icon: Users, label: t.sidebar.team },
-    { id: 'reports', icon: BarChart3, label: t.sidebar.reports },
+    { id: 'reports', icon: BarChart3, label: t.sidebar.reports, roles: ['admin', 'manager'] as string[] },
     { id: 'settings', icon: Settings, label: t.sidebar.settings },
   ];
+
+  const navItems = allNavItems.filter(item =>
+    !item.roles || (userRole && item.roles.includes(userRole))
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden border-t border-white/10 safe-area-bottom"

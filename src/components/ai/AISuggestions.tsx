@@ -35,9 +35,13 @@ export function AISuggestions({
     setLoading(true);
     setApplied(new Set());
     try {
+      const token = localStorage.getItem('auth_token');
       const res = await fetch('/api/tasks/ai/suggest', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ title, description, projectId })
       });
       if (res.ok) {

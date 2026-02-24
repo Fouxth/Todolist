@@ -205,7 +205,7 @@ export function TaskModal({
     }));
   };
 
-  const availableTeams = teams.filter(t => t.projectId === formData.projectId);
+  const availableTeams = teams;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

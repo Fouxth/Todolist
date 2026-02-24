@@ -220,7 +220,7 @@ tasksRouter.patch('/:id', async (req, res) => {
 
         // Whitelist only fields that exist in the Task Prisma model
         const allowedFields = ['title', 'description', 'status', 'priority', 'projectId',
-            'dueDate', 'sprintId', 'recurring', 'coverImage', 'updatedBy', 'createdBy'];
+            'teamId', 'dueDate', 'sprintId', 'recurring', 'createdBy'];
         const taskData: Record<string, unknown> = {};
         for (const key of allowedFields) {
             if (key in rawData) taskData[key] = rawData[key];

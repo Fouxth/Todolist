@@ -36,8 +36,8 @@ export function FileAttachments({ taskId, attachments, onRefresh }: FileAttachme
     try {
       const token = localStorage.getItem('auth_token');
       for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} exceeds 10MB limit`);
+        if (file.size > 25 * 1024 * 1024) {
+          toast.error(`${file.name} exceeds 25MB limit`);
           continue;
         }
         const formData = new FormData();

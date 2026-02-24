@@ -699,7 +699,7 @@ function App() {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onSave={handleSaveTask}
-        task={selectedTask}
+        task={selectedTask ? (store.tasks.find(t => t.id === selectedTask.id) ?? selectedTask) : null}
         users={store.users}
         projects={store.projects}
         teams={store.teams}

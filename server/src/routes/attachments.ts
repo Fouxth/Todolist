@@ -53,6 +53,11 @@ attachmentsRouter.post('/tasks/:taskId/attachments', authenticate, async (req: A
                 for (const part of parts) {
                     if (!part.filename) continue;
 
+                    // Reject files over 25MB
+                    if (part.data.length > 25 * 1024 * 1024) {
+                        return res.status(413).json({ error: `${part.filename} exceeds 25MB limit` });
+                    }
+
                     // Generate unique filename
                     const ext = path.extname(part.filename);
                     const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;

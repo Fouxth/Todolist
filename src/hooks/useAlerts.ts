@@ -23,7 +23,7 @@ export function useAlerts() {
             action: options?.action
         };
 
-        setAlerts(prev => [...prev, alert]);
+        setAlerts([alert]);
 
         return id;
     }, []);

@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { toast } from 'sonner';
-import { Bell, CheckCircle, MessageSquare, UserPlus, AlertCircle } from 'lucide-react';
 
 export interface Notification {
     id: string;
@@ -46,21 +44,6 @@ interface UseNotificationsOptions {
     prefs?: NotificationPrefs;
     onNotification?: (notification: Notification) => void;
 }
-
-// Notification icon mapping
-const getNotificationIcon = (type: string) => {
-    const iconMap: Record<string, any> = {
-        'task_assigned': UserPlus,
-        'comment': MessageSquare,
-        'mention': MessageSquare,
-        'task_completed': CheckCircle,
-        'due_soon': AlertCircle,
-        'task_created': Bell,
-        'default': Bell
-    };
-    const Icon = iconMap[type] || iconMap.default;
-    return <Icon className="w-4 h-4" />;
-};
 
 // Create notification sound using Web Audio API
 const playNotificationSound = () => {
@@ -136,27 +119,16 @@ export function useNotifications({ token, prefs, onNotification }: UseNotificati
             setNotifications(prev => [notif, ...prev]);
             setUnreadCount(prev => prev + 1);
 
-            // Skip toast for chat notifications — handled by ChatPanel unread badge
-            if (notif.type !== 'chat' as any) {
-                // Check user prefs — if the pref key exists and is false, suppress
-                const prefKey = TYPE_TO_PREF[notif.type];
-                const allowed = !prefKey || !prefs || prefs[prefKey] !== false;
+            // Skip chat notifications — handled by ChatPanel unread badge
+            if ((notif.type as string) === 'chat') return;
 
-                if (allowed) {
-                    toast(notif.title, {
-                        description: notif.message,
-                        duration: 5000,
-                        icon: getNotificationIcon(notif.type),
-                    });
-                    playNotificationSound();
-                }
-            }
+            // Check user prefs
+            const prefKey = TYPE_TO_PREF[notif.type];
+            const allowed = !prefKey || !prefs || prefs[prefKey] !== false;
 
-            // Call callback if provided (also gated by prefs)
-            if (onNotification) {
-                const prefKey = TYPE_TO_PREF[notif.type];
-                const allowed = !prefKey || !prefs || prefs[prefKey] !== false;
-                if (allowed && (notif.type as string) !== 'chat') {
+            if (allowed) {
+                playNotificationSound();
+                if (onNotification) {
                     onNotification(notif);
                 }
             }

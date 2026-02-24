@@ -122,6 +122,7 @@ export function ReportsPage({ tasks, users, projects }: ReportsPageProps) {
             `  ${t.reports.totalTasks}: ${total}`,
             `  ${t.reports.completed}: ${done}`,
             `  ${t.reports.inProgress}: ${inProgress}`,
+            `  ${t.reports.cancelled}: ${cancelled}`,
             `  ${t.reports.overdue}: ${overdue}`,
             ``,
             `${t.reports.taskDetails}:`,
@@ -167,12 +168,13 @@ export function ReportsPage({ tasks, users, projects }: ReportsPageProps) {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
                     { label: t.reports.totalTasks, value: total, icon: <Clock className="w-5 h-5" />, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                     { label: t.reports.completed, value: done, icon: <CheckCircle2 className="w-5 h-5" />, color: 'text-green-400', bg: 'bg-green-500/10' },
                     { label: t.reports.inProgress, value: inProgress, icon: <TrendingUp className="w-5 h-5" />, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-                    { label: t.reports.overdue, value: overdue, icon: <AlertCircle className="w-5 h-5" />, color: 'text-red-400', bg: 'bg-red-500/10' },
+                    { label: t.reports.cancelled, value: cancelled, icon: <AlertCircle className="w-5 h-5" />, color: 'text-red-400', bg: 'bg-red-500/10' },
+                    { label: t.reports.overdue, value: overdue, icon: <AlertCircle className="w-5 h-5" />, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                 ].map(s => (
                     <div key={s.label} className="bg-[#111] border border-white/5 rounded-xl p-5 flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center ${s.color}`}>{s.icon}</div>

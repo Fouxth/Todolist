@@ -43,6 +43,7 @@ export interface Project {
     completed: number;
     inProgress: number;
     todo: number;
+    cancelled?: number;
   };
 }
 
@@ -62,7 +63,7 @@ export interface Sprint {
 }
 
 // Task Types
-export type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done';
+export type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
@@ -180,6 +181,7 @@ export interface DashboardStats {
   completedTasks: number;
   inProgressTasks: number;
   reviewTasks: number;
+  cancelledTasks: number;
   teamMembers: number;
   projects: number;
   overdueTasks: number;

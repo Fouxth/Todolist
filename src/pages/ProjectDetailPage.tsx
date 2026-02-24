@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ArrowLeft, Users, CheckCircle2, Clock, AlertCircle, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle2, Clock, AlertCircle, TrendingUp, XCircle } from 'lucide-react';
 import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 import { useLanguage } from '@/i18n/LanguageContext';
 import type { Project, Task, User, Team } from '@/types';
@@ -53,7 +53,9 @@ export function ProjectDetailPage({
     const completed = projectTasks.filter(t => t.status === 'done').length;
     const inProgress = projectTasks.filter(t => t.status === 'in-progress').length;
     const todo = projectTasks.filter(t => t.status === 'todo').length;
-    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const cancelled = projectTasks.filter(t => t.status === 'cancelled').length;
+    const activeTotal = total - cancelled;
+    const progress = activeTotal > 0 ? Math.round((completed / activeTotal) * 100) : 0;
 
     // Get all unique assignees in this project
     const assigneeIds = new Set<string>();
@@ -68,14 +70,17 @@ export function ProjectDetailPage({
       const userCompleted = userTasks.filter(t => t.status === 'done').length;
       const userInProgress = userTasks.filter(t => t.status === 'in-progress').length;
       const userTodo = userTasks.filter(t => t.status === 'todo').length;
-      
+      const userCancelled = userTasks.filter(t => t.status === 'cancelled').length;
+      const userActive = userTasks.length - userCancelled;
+
       return {
         user,
         total: userTasks.length,
         completed: userCompleted,
         inProgress: userInProgress,
         todo: userTodo,
-        progress: userTasks.length > 0 ? Math.round((userCompleted / userTasks.length) * 100) : 0,
+        cancelled: userCancelled,
+        progress: userActive > 0 ? Math.round((userCompleted / userActive) * 100) : 0,
       };
     }).sort((a, b) => b.total - a.total);
 
@@ -84,7 +89,7 @@ export function ProjectDetailPage({
     const overdue = projectTasks.filter(t => 
       t.dueDate && 
       new Date(t.dueDate) < now && 
-      t.status !== 'done'
+      t.status !== 'done' && t.status !== 'cancelled'
     ).length;
 
     return {
@@ -92,7 +97,7 @@ export function ProjectDetailPage({
       completed,
       inProgress,
       todo,
-      progress,
+      cancelled,      activeTotal,      progress,
       assignees,
       tasksByAssignee,
       overdue,
@@ -150,9 +155,15 @@ export function ProjectDetailPage({
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-3xl font-bold text-white">{stats.progress}%</span>
               <span className="text-sm text-gray-500">
-                {stats.completed}/{stats.total}
+                {stats.completed}/{stats.activeTotal}
               </span>
             </div>
+            {stats.cancelled > 0 && (
+              <div className="flex items-center gap-1 text-xs text-red-400 mt-1">
+                <XCircle className="w-3 h-3" />
+                <span>{stats.cancelled} ยกเลิก</span>
+              </div>
+            )}
             <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-[var(--orange)] to-[var(--neon-cyan)] transition-all duration-500"
@@ -164,12 +175,12 @@ export function ProjectDetailPage({
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* Total Tasks */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">{t.kanban?.todo || 'งานทั้งหมด'}</p>
+              <p className="text-sm text-gray-400">งานทั้งหมด</p>
               <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
             </div>
             <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -216,6 +227,27 @@ export function ProjectDetailPage({
             </div>
           </div>
         </div>
+
+        {/* Cancelled */}
+        <div className={`border rounded-xl p-4 ${
+          stats.cancelled > 0
+            ? 'bg-red-500/5 border-red-500/20'
+            : 'bg-white/5 border-white/10'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">{t.kanban?.cancelled || 'ยกเลิก'}</p>
+              <p className={`text-2xl font-bold mt-1 ${
+                stats.cancelled > 0 ? 'text-red-400' : 'text-white'
+              }`}>{stats.cancelled}</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <XCircle className={`w-6 h-6 ${
+                stats.cancelled > 0 ? 'text-red-400' : 'text-gray-600'
+              }`} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Team Members & Their Tasks */}
@@ -227,7 +259,7 @@ export function ProjectDetailPage({
           </h3>
           
           <div className="space-y-4">
-            {stats.tasksByAssignee.map(({ user, total, completed, inProgress, todo, progress }) => (
+            {stats.tasksByAssignee.map(({ user, total, completed, inProgress, todo, cancelled: userCancelled, progress }) => (
               <div key={user.id} className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
                 {/* User Info */}
                 <img
@@ -277,6 +309,12 @@ export function ProjectDetailPage({
                     <div className="text-xs text-gray-500 mb-1">Done</div>
                     <div className="text-green-400 font-medium">{completed}</div>
                   </div>
+                  {(userCancelled ?? 0) > 0 && (
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">ยกเลิก</div>
+                      <div className="text-red-400 font-medium">{userCancelled}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

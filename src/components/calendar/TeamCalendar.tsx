@@ -312,7 +312,8 @@ export function TeamCalendar({ events, tasks, users, projects, currentUserId, on
                   'todo': { label: 'รอดำเนินการ', color: '#9ca3af' },
                   'in-progress': { label: 'กำลังดำเนินการ', color: '#3b82f6' },
                   'review': { label: 'รอตรวจสอบ', color: '#f59e0b' },
-                  'done': { label: 'เสร็จสิ้น', color: '#22c55e' }
+                  'done': { label: 'เสร็จสิ้น', color: '#22c55e' },
+                  'cancelled': { label: 'ยกเลิก', color: '#ef4444' }
                 };
 
                 const priority = priorityConfig[task.priority] || priorityConfig.medium;

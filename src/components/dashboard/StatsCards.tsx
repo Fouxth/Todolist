@@ -144,12 +144,13 @@ export function StatsCards({ stats, tasks = [] }: StatsCardsProps) {
       completedTasks: tasks.filter(t => t.status === 'done').length,
       inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
       reviewTasks: tasks.filter(t => t.status === 'review').length,
+      cancelledTasks: tasks.filter(t => t.status === 'cancelled').length,
       teamMembers: stats.teamMembers,
       projects: stats.projects,
       overdueTasks: tasks.filter(t => 
         t.dueDate && 
         new Date(t.dueDate) < new Date() && 
-        t.status !== 'done'
+        t.status !== 'done' && t.status !== 'cancelled'
       ).length
     };
   }, [tasks, stats.teamMembers, stats.projects]);

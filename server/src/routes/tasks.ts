@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { createAndSendNotification, createAndSendNotifications, emitToUser } from '../lib/socket.js';
+import { createAndSendNotification, createAndSendNotifications, emitToUser, emitToUsers } from '../lib/socket.js';
 import { sendEmail, taskAssignedEmail } from '../lib/email.js';
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth.js';
 
@@ -282,8 +282,9 @@ tasksRouter.patch('/:id', async (req, res) => {
             const statusLabels: Record<string, string> = {
                 'todo': 'รอดำเนินการ',
                 'in-progress': 'กำลังทำ',
-                'in-review': 'รอตรวจสอบ',
-                'done': 'เสร็จสิ้น'
+                'review': 'รอตรวจสอบ',
+                'done': 'เสร็จสิ้น',
+                'cancelled': 'ยกเลิก'
             };
             changes.push(`สถานะ: ${statusLabels[taskData.status] || taskData.status}`);
 
@@ -295,6 +296,18 @@ tasksRouter.patch('/:id', async (req, res) => {
                     'task_completed',
                     '✅ งานเสร็จสิ้น',
                     `${updater?.name || 'ใครบางคน'} ทำงาน "${task.title}" เสร็จแล้ว`,
+                    taskId
+                );
+            }
+
+            // If cancelled, send cancellation notification
+            if (taskData.status === 'cancelled') {
+                const updater = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+                await createAndSendNotifications(
+                    Array.from(notifyUsers).filter(id => id !== userId),
+                    'info',
+                    '❌ งานถูกยกเลิก',
+                    `${updater?.name || 'ใครบางคน'} ยกเลิกงาน "${task.title}"`,
                     taskId
                 );
             }
@@ -452,7 +465,7 @@ tasksRouter.patch('/:id/status', async (req, res) => {
         await prisma.activity.create({
             data: {
                 userId: task.createdBy,
-                action: status === 'done' ? 'completed' : 'updated',
+                action: status === 'done' ? 'completed' : status === 'cancelled' ? 'updated' : 'updated',
                 targetType: 'task',
                 targetId: task.id,
                 targetName: task.title
@@ -471,6 +484,25 @@ tasksRouter.patch('/:id/status', async (req, res) => {
                         type: 'task_completed',
                         title: 'งานเสร็จสมบูรณ์แล้ว',
                         message: `งาน "${task.title}" ถูกเปลี่ยนสถานะเป็นเสร็จสมบูรณ์`,
+                        link: task.id
+                    }
+                });
+                emitToUser(uid, 'new_notification', notif);
+            }
+        }
+
+        // Notify on cancellation
+        if (status === 'cancelled') {
+            const assignees = await prisma.taskAssignee.findMany({ where: { taskId: task.id }, select: { userId: true } });
+            const allUserIds = [task.createdBy, ...assignees.map(a => a.userId)];
+            const uniqueUserIds = [...new Set(allUserIds)];
+            for (const uid of uniqueUserIds) {
+                const notif = await prisma.notification.create({
+                    data: {
+                        userId: uid,
+                        type: 'info',
+                        title: '❌ งานถูกยกเลิก',
+                        message: `งาน "${task.title}" ถูกเปลี่ยนสถานะเป็นยกเลิก`,
                         link: task.id
                     }
                 });
@@ -533,7 +565,83 @@ tasksRouter.patch('/:id/status', async (req, res) => {
             }
         }
 
-        res.json(task);
+        // Auto-update project status based on task statuses
+        if (task.projectId) {
+            const allProjectTasks = await prisma.task.findMany({
+                where: { projectId: task.projectId },
+                select: { status: true }
+            });
+
+            const currentProject = await prisma.project.findUnique({
+                where: { id: task.projectId },
+                select: { status: true }
+            });
+
+            const allCancelled = allProjectTasks.length > 0 &&
+                allProjectTasks.every(t => t.status === 'cancelled');
+
+            // Case 1: all tasks cancelled → project becomes cancelled
+            if (allCancelled && currentProject?.status !== 'cancelled') {
+                const updatedProject = await prisma.project.update({
+                    where: { id: task.projectId },
+                    data: { status: 'cancelled' }
+                });
+
+                const projectMembers = await prisma.taskAssignee.findMany({
+                    where: { task: { projectId: task.projectId } },
+                    select: { userId: true },
+                    distinct: ['userId']
+                });
+                const memberIds = [...new Set(projectMembers.map(m => m.userId))];
+
+                emitToUsers(memberIds, 'project:updated', { ...updatedProject, taskCount: {
+                    total: allProjectTasks.length,
+                    completed: 0,
+                    inProgress: 0,
+                    todo: 0,
+                    cancelled: allProjectTasks.length
+                }});
+
+                for (const uid of memberIds) {
+                    const notif = await prisma.notification.create({
+                        data: {
+                            userId: uid,
+                            type: 'info',
+                            title: '🚫 โปรเจคถูกยกเลิก',
+                            message: `งานทุกชิ้นในโปรเจคถูกยกเลิกแล้ว สถานะโปรเจคถูกเปลี่ยนเป็นยกเลิกอัตโนมัติ`,
+                            link: task.projectId
+                        }
+                    });
+                    emitToUser(uid, 'new_notification', notif);
+                }
+            }
+
+            // Case 2: project was cancelled but now has non-cancelled task → revert to active
+            if (!allCancelled && currentProject?.status === 'cancelled') {
+                const updatedProject = await prisma.project.update({
+                    where: { id: task.projectId },
+                    data: { status: 'active' }
+                });
+
+                const projectMembers = await prisma.taskAssignee.findMany({
+                    where: { task: { projectId: task.projectId } },
+                    select: { userId: true },
+                    distinct: ['userId']
+                });
+                const memberIds = [...new Set(projectMembers.map(m => m.userId))];
+
+                const cancelledCount = allProjectTasks.filter(t => t.status === 'cancelled').length;
+                emitToUsers(memberIds, 'project:updated', { ...updatedProject, taskCount: {
+                    total: allProjectTasks.length,
+                    completed: allProjectTasks.filter(t => t.status === 'done').length,
+                    inProgress: allProjectTasks.filter(t => t.status === 'in-progress').length,
+                    todo: allProjectTasks.filter(t => t.status === 'todo').length,
+                    cancelled: cancelledCount
+                }});
+            }
+        }
+
+        res.json(task); // end if (task.projectId)
     } catch (error) {
         console.error('Error updating task status:', error);
         res.status(500).json({ error: 'Failed to update task status' });

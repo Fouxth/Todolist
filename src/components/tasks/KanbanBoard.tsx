@@ -21,7 +21,7 @@ interface KanbanBoardProps {
 
 interface Column {
   id: TaskStatus;
-  titleKey: 'todo' | 'inProgress' | 'review' | 'done';
+  titleKey: 'todo' | 'inProgress' | 'review' | 'done' | 'cancelled';
   color: string;
   bgColor: string;
 }
@@ -30,7 +30,8 @@ const columns: Column[] = [
   { id: 'todo', titleKey: 'todo', color: '#94a3b8', bgColor: 'rgba(148, 163, 184, 0.08)' },
   { id: 'in-progress', titleKey: 'inProgress', color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.08)' },
   { id: 'review', titleKey: 'review', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.08)' },
-  { id: 'done', titleKey: 'done', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.08)' }
+  { id: 'done', titleKey: 'done', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.08)' },
+  { id: 'cancelled', titleKey: 'cancelled', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.08)' }
 ];
 
 export function KanbanBoard({

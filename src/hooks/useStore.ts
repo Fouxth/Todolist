@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import type {
   User, Team, Project, Task, CalendarEvent, Activity, Sprint,
   TaskStatus, TaskFilter, DashboardStats, TimeEntry
@@ -38,7 +39,7 @@ export const useStore = () => {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalTasks: 0, completedTasks: 0, inProgressTasks: 0,
-    reviewTasks: 0, teamMembers: 0, projects: 0, overdueTasks: 0
+    reviewTasks: 0, cancelledTasks: 0, teamMembers: 0, projects: 0, overdueTasks: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,28 @@ export const useStore = () => {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [loadData]);
+
+  // Real-time socket listeners for instant state updates
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://nut-commands-reviewed-rolls.trycloudflare.com';
+    const socket = io(socketUrl, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      path: '/socket.io'
+    });
+
+    // Instantly update project in state when server emits a change
+    socket.on('project:updated', (updatedProject: Project) => {
+      setProjects(prev =>
+        prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p)
+      );
+    });
+
+    return () => { socket.disconnect(); };
+  }, []);
 
   // Refresh helpers
   const refreshTasks = useCallback(async () => {
@@ -219,9 +242,10 @@ export const useStore = () => {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus })
       });
-      await refreshTasks();
     } catch (error) {
       console.error('Failed to move task:', error);
+    } finally {
+      await refreshTasks();
     }
   }, [refreshTasks]);
 

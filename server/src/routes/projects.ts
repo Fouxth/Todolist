@@ -21,7 +21,8 @@ projectsRouter.get('/', async (_req, res) => {
                 total: project.tasks.length,
                 completed: project.tasks.filter(t => t.status === 'done').length,
                 inProgress: project.tasks.filter(t => t.status === 'in-progress').length,
-                todo: project.tasks.filter(t => t.status === 'todo').length
+                todo: project.tasks.filter(t => t.status === 'todo').length,
+                cancelled: project.tasks.filter(t => t.status === 'cancelled').length
             };
             const { tasks, ...proj } = project;
             return { ...proj, taskCount };

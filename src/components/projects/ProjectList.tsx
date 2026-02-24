@@ -6,7 +6,8 @@ import {
   ArrowRight,
   Plus,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  XCircle
 } from 'lucide-react';
 import type { Project, Team, Task } from '@/types';
 import { cn } from '@/lib/utils';
@@ -175,8 +176,14 @@ export function ProjectList({ projects, teams, onProjectClick, onCreateProject, 
                 <div className="flex items-center gap-4 mb-4 text-sm">
                   <div className="flex items-center gap-1.5 text-gray-400">
                     <CheckSquare className="w-4 h-4" />
-                    <span>{project.taskCount.completed}/{project.taskCount.total}</span>
+                    <span>{project.taskCount.completed}/{project.taskCount.total - (project.taskCount.cancelled ?? 0)}</span>
                   </div>
+                  {(project.taskCount.cancelled ?? 0) > 0 && (
+                    <div className="flex items-center gap-1.5 text-red-400">
+                      <XCircle className="w-4 h-4" />
+                      <span>{project.taskCount.cancelled} ยกเลิก</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 text-gray-400">
                     <Users className="w-4 h-4" />
                     <span>{projectTeams.length} {t.projects.teams}</span>

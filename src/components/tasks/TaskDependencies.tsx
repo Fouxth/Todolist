@@ -163,7 +163,8 @@ export function TaskDependencies({
                   "w-2 h-2 rounded-full shrink-0",
                   task.status === 'done' ? "bg-green-400" :
                   task.status === 'in-progress' ? "bg-[#ff6b35]" :
-                  task.status === 'review' ? "bg-blue-400" : "bg-gray-400"
+                  task.status === 'review' ? "bg-blue-400" :
+                  task.status === 'cancelled' ? "bg-red-400" : "bg-gray-400"
                 )} />
                 <span className="text-sm text-gray-300 truncate">{task.title}</span>
                 <span className="text-xs text-gray-500">{task.status}</span>

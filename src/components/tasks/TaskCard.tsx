@@ -68,7 +68,7 @@ export function TaskCard({ task, users, onClick, onDelete, onStartTimeTracking, 
   const progress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
   const isAssignedToMe = currentUserId ? task.assignees.includes(currentUserId) : true;
 
-  const isOverdue = task.dueDate && isPast(task.dueDate) && !isToday(task.dueDate) && task.status !== 'done';
+  const isOverdue = task.dueDate && isPast(task.dueDate) && !isToday(task.dueDate) && task.status !== 'done' && task.status !== 'cancelled';
 
   const handleTimeTracking = (e: React.MouseEvent) => {
     e.stopPropagation();

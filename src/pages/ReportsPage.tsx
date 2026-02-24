@@ -86,8 +86,9 @@ export function ReportsPage({ tasks, users, projects }: ReportsPageProps) {
     // Summary stats
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'done').length;
-    const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'done').length;
+    const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'done' && t.status !== 'cancelled').length;
     const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+    const cancelled = tasks.filter(t => t.status === 'cancelled').length;
 
     const tooltipStyle = { backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' };
 

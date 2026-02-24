@@ -186,6 +186,10 @@
     @apply border-t-4 border-green-500;
   }
 
+  .column-cancelled {
+    @apply border-t-4 border-red-500;
+  }
+
   /* Animated border gradient */
   .border-gradient {
     position: relative;

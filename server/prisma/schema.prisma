@@ -126,7 +126,7 @@ model Task {
   id          String    @id @default(cuid())
   title       String
   description String    @default("")
-  status      String    @default("todo") // todo, in-progress, review, done
+  status      String    @default("todo") // todo, in-progress, review, done, cancelled
   priority    String    @default("medium") // low, medium, high, urgent
   projectId   String
   teamId      String?

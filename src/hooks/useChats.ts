@@ -41,8 +41,8 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
             if (res.ok) {
                 const data: Chat[] = await res.json();
                 setChats(data);
-                // Join all chat rooms so realtime messages are received
-                if (socketRef.current?.connected) {
+                // Join all chat rooms — emit even if not yet connected, socket.io will queue and send on connect
+                if (socketRef.current) {
                     data.forEach(c => socketRef.current!.emit('chat:join', c.id));
                 }
             }
@@ -221,10 +221,13 @@ export function useChats({ token, currentUserId }: UseChatsOptions) {
 
         // Auto-join all chat rooms so user receives messages without opening chat first
         socket.on('connect', () => {
+            // Re-join all known rooms immediately (handles reconnect)
             setChats(prev => {
                 prev.forEach(c => socket.emit('chat:join', c.id));
                 return prev;
             });
+            // Re-fetch to get any chats created while disconnected + ensure rooms are joined
+            if (socketRef.current) fetchChats();
         });
 
         socket.on('chat:message', (msg: ChatMessage) => {

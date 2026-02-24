@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, MoreHorizontal, CheckSquare, Clock, TrendingUp, UserPlus, Plus, Trash2, Shield, Users2, X, AlertCircle, Loader, CheckCircle2, Eye } from 'lucide-react';
+import { Mail, MoreHorizontal, CheckSquare, Clock, TrendingUp, UserPlus, Plus, Trash2, Shield, Users2, X, AlertCircle, Loader, CheckCircle2, Eye, XCircle } from 'lucide-react';
 import type { User, Task, Team } from '@/types';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -926,12 +926,14 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
         const inProgressTasks = userTasks.filter(task => task.status === 'in-progress');
         const reviewTasks = userTasks.filter(task => task.status === 'review');
         const todoTasks = userTasks.filter(task => task.status === 'todo');
+        const cancelledTasks = userTasks.filter(task => task.status === 'cancelled');
 
         const statusConfig: Record<string, { labelTh: string; color: string; icon: React.ReactNode }> = {
           'done':        { labelTh: 'เสร็จแล้ว',    color: 'text-green-400',  icon: <CheckCircle2 className="w-4 h-4 text-green-400" /> },
           'in-progress': { labelTh: 'กำลังทำ',     color: 'text-blue-400',   icon: <Loader className="w-4 h-4 text-blue-400" /> },
           'review':      { labelTh: 'รอรีวิว',     color: 'text-yellow-400', icon: <Eye className="w-4 h-4 text-yellow-400" /> },
           'todo':        { labelTh: 'ยังไม่เริ่ม',  color: 'text-gray-400',   icon: <AlertCircle className="w-4 h-4 text-gray-400" /> },
+          'cancelled':   { labelTh: 'ยกเลิก',    color: 'text-red-400',    icon: <XCircle className="w-4 h-4 text-red-400" /> },
         };
 
         const priorityColors: Record<string, string> = {
@@ -950,6 +952,7 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
           { key: 'review',      tasks: reviewTasks },
           { key: 'todo',        tasks: todoTasks },
           { key: 'done',        tasks: doneTasks },
+          { key: 'cancelled',   tasks: cancelledTasks },
         ];
 
         return (
@@ -1036,14 +1039,14 @@ export function TeamMembers({ users, tasks, teams, onAddTeamMember, onRemoveTeam
                               <div className="flex-1 min-w-0">
                                 <p className={cn(
                                   'text-sm font-medium truncate',
-                                  key === 'done' ? 'line-through text-gray-500' : 'text-white'
+                                  key === 'done' ? 'line-through text-gray-500' : key === 'cancelled' ? 'line-through text-red-400/70' : 'text-white'
                                 )}>
                                   {task.title}
                                 </p>
                                 {task.dueDate && (
                                   <p className={cn(
                                     'text-xs mt-0.5',
-                                    new Date(task.dueDate) < new Date() && key !== 'done'
+                                    new Date(task.dueDate) < new Date() && key !== 'done' && key !== 'cancelled'
                                       ? 'text-red-400'
                                       : 'text-gray-500'
                                   )}>

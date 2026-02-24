@@ -24,16 +24,17 @@ statsRouter.get('/', async (req, res) => {
             ];
         }
 
-        const [totalTasks, completedTasks, inProgressTasks, reviewTasks, overdueTasks, teamMembers, projects] = await Promise.all([
+        const [totalTasks, completedTasks, inProgressTasks, reviewTasks, cancelledTasks, overdueTasks, teamMembers, projects] = await Promise.all([
             prisma.task.count({ where: whereClause }),
             prisma.task.count({ where: { ...whereClause, status: 'done' } }),
             prisma.task.count({ where: { ...whereClause, status: 'in-progress' } }),
             prisma.task.count({ where: { ...whereClause, status: 'review' } }),
+            prisma.task.count({ where: { ...whereClause, status: 'cancelled' } }),
             prisma.task.count({
                 where: {
                     ...whereClause,
                     dueDate: { lt: new Date() },
-                    status: { not: 'done' }
+                    status: { notIn: ['done', 'cancelled'] }
                 }
             }),
             prisma.user.count(),
@@ -45,6 +46,7 @@ statsRouter.get('/', async (req, res) => {
             completedTasks,
             inProgressTasks,
             reviewTasks,
+            cancelledTasks,
             teamMembers,
             projects,
             overdueTasks

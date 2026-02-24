@@ -74,7 +74,8 @@ export function TaskModal({
     { value: 'todo', label: t.kanban.todo, color: '#94a3b8' },
     { value: 'in-progress', label: t.kanban.inProgress, color: '#f97316' },
     { value: 'review', label: t.kanban.review, color: '#3b82f6' },
-    { value: 'done', label: t.kanban.done, color: '#22c55e' }
+    { value: 'done', label: t.kanban.done, color: '#22c55e' },
+    { value: 'cancelled', label: t.kanban.cancelled, color: '#ef4444' }
   ];
 
   const [formData, setFormData] = useState<Partial<Task>>({

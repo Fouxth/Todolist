@@ -56,7 +56,7 @@ export function SprintBoard({
   };
 
   const unassignedTasks = useMemo(() =>
-    tasks.filter(t => !t.sprintId && t.status !== 'done'),
+    tasks.filter(t => !t.sprintId && t.status !== 'done' && t.status !== 'cancelled'),
     [tasks]
   );
 
@@ -87,6 +87,7 @@ export function SprintBoard({
     const isOverdue = isPast(new Date(sprint.endDate)) && sprint.status !== 'completed';
     const doneCount = sTasks.filter(t => t.status === 'done').length;
     const inProgressCount = sTasks.filter(t => t.status === 'in-progress').length;
+    const cancelledCount = sTasks.filter(t => t.status === 'cancelled').length;
 
     return (
       <div className={cn(
@@ -197,6 +198,9 @@ export function SprintBoard({
             <span className="flex items-center gap-1 text-green-400">
               <CheckCircle2 className="w-3 h-3" /> {doneCount} {t.sprint?.doneCount || 'Done'}
             </span>
+            <span className="flex items-center gap-1 text-red-400">
+              <Circle className="w-3 h-3" /> {cancelledCount} {t.sprint?.cancelledCount || 'Cancelled'}
+            </span>
           </div>
         </div>
 
@@ -241,11 +245,12 @@ export function SprintBoard({
                   "w-2 h-2 rounded-full shrink-0",
                   task.status === 'done' ? "bg-green-400" :
                   task.status === 'in-progress' ? "bg-[#ff6b35]" :
-                  task.status === 'review' ? "bg-blue-400" : "bg-gray-400"
+                  task.status === 'review' ? "bg-blue-400" :
+                  task.status === 'cancelled' ? "bg-red-400" : "bg-gray-400"
                 )} />
                 <span className={cn(
                   "flex-1 text-sm truncate",
-                  task.status === 'done' ? "text-gray-500 line-through" : "text-gray-300"
+                  task.status === 'done' ? "text-gray-500 line-through" : task.status === 'cancelled' ? "text-red-400/70 line-through" : "text-gray-300"
                 )}>
                   {task.title}
                 </span>

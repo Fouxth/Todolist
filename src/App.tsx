@@ -269,7 +269,8 @@ function App() {
         'todo': t.kanban.todo,
         'in-progress': t.kanban.inProgress,
         'review': t.kanban.review,
-        'done': t.kanban.done
+        'done': t.kanban.done,
+        'cancelled': t.kanban.cancelled
       };
       
       alerts.success(

@@ -58,7 +58,7 @@ export function LoginPage() {
                 </div>
 
                 {/* Card */}
-                <div className="bg-[#111] border border-white/8 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
+                <div className="bg-[#111] border border-white/8 rounded-2xl p-5 sm:p-8 shadow-2xl backdrop-blur-sm">
                     {/* Tabs */}
                     <div className="flex mb-6 bg-white/5 rounded-lg p-1">
                         <button

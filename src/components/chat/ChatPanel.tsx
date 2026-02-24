@@ -96,7 +96,7 @@ export function ChatPanel({ isOpen, onClose, chatHook, currentUser, users, proje
             />
 
             {/* Panel */}
-            <div className="fixed right-0 top-0 h-screen w-[380px] z-50 flex flex-col bg-background border-l border-border shadow-2xl">
+            <div className="fixed right-0 top-0 h-screen w-full sm:w-[380px] z-50 flex flex-col bg-background border-l border-border shadow-2xl">
                 {/* ── Header ────────────────────────────────────────────────── */}
                 {activeChatId && activeChat ? (
                     // Chat window header

@@ -60,6 +60,7 @@ function App() {
   const [selectedProject] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(emptyFilters);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -377,7 +378,7 @@ function App() {
       case 'tasks':
         return (
           <div>
-            <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">
                   {t.tasksPage.myTasks || 'งานของฉัน'}
@@ -386,7 +387,7 @@ function App() {
               </div>
               
               {/* Project Filter Dropdown */}
-              <div className="min-w-[200px]">
+              <div className="w-full sm:min-w-[200px] sm:w-auto">
                 <select
                   value={myTasksProjectFilter}
                   onChange={(e) => setMyTasksProjectFilter(e.target.value)}
@@ -610,6 +611,8 @@ function App() {
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         totalUnread={chatHook.totalUnread}
         onChatOpen={() => setIsChatOpen(true)}
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
       />
 
       {/* Mobile Nav */}
@@ -618,7 +621,7 @@ function App() {
       {/* Main Content */}
       <main className={cn(
         "transition-all duration-400 min-h-screen",
-        isMobile ? "ml-0 pb-20" : "ml-[250px]"
+        isMobile ? "ml-0 pb-20" : sidebarCollapsed ? "ml-[70px]" : "ml-[250px]"
       )}>
         <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
           {/* Mobile Header with hamburger */}
@@ -657,7 +660,7 @@ function App() {
 
           {/* Undo/Redo floating buttons */}
           {(canUndo || canRedo) && (
-            <div className="fixed bottom-6 right-6 flex items-center gap-2 z-30 lg:bottom-8 lg:right-8">
+            <div className="fixed bottom-24 right-4 flex items-center gap-2 z-30 lg:bottom-8 lg:right-8">
               {canUndo && (
                 <button
                   onClick={undo}

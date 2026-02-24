@@ -288,7 +288,7 @@ export function TaskModal({
           </div>
 
           {/* Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-300">{t.modal.status}</Label>
               <div className="flex gap-2 mt-1.5 flex-wrap">
@@ -345,7 +345,7 @@ export function TaskModal({
           </div>
 
           {/* Project & Team */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-300">{t.modal.project}</Label>
               <select
@@ -387,7 +387,7 @@ export function TaskModal({
           </div>
 
           {/* Due Date & Estimated Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-300">{t.modal.dueDate}</Label>
               <Input

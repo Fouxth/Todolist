@@ -32,10 +32,14 @@ interface SidebarProps {
   onToggle?: () => void;
   totalUnread?: number;
   onChatOpen?: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (v: boolean) => void;
 }
 
-export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle: _onToggle, totalUnread = 0, onChatOpen }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMobile, isOpen, onToggle: _onToggle, totalUnread = 0, onChatOpen, collapsed: collapsedProp, onCollapsedChange }: SidebarProps) {
+  const [collapsedInternal, setCollapsedInternal] = useState(false);
+  const collapsed = collapsedProp !== undefined ? collapsedProp : collapsedInternal;
+  const setCollapsed = (v: boolean) => { setCollapsedInternal(v); onCollapsedChange?.(v); };
   const { t, lang, toggleLang } = useLanguage();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -228,13 +232,15 @@ export function Sidebar({ currentUser, activeView, onViewChange, onLogout, isMob
         </div>
       </div>
 
-      {/* Collapse Toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-[var(--orange)] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-      >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </button>
+      {/* Collapse Toggle — desktop only */}
+      {!isMobile && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-[var(--orange)] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+        >
+          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        </button>
+      )}
     </aside>
   );
 }

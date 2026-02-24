@@ -286,7 +286,7 @@ tasksRouter.patch('/:id', async (req, res) => {
                 'done': 'เสร็จสิ้น',
                 'cancelled': 'ยกเลิก'
             };
-            changes.push(`สถานะ: ${statusLabels[taskData.status] || taskData.status}`);
+            changes.push(`สถานะ: ${statusLabels[taskData.status as string] || taskData.status as string}`);
 
             // If completed, send success notification
             if (taskData.status === 'done') {
@@ -321,12 +321,12 @@ tasksRouter.patch('/:id', async (req, res) => {
                 'high': 'สูง',
                 'urgent': 'เร่งด่วน'
             };
-            changes.push(`ความสำคัญ: ${priorityLabels[taskData.priority] || taskData.priority}`);
+            changes.push(`ความสำคัญ: ${priorityLabels[taskData.priority as string] || taskData.priority as string}`);
         }
 
         // Check for due date change
         if (taskData.dueDate && oldTask && taskData.dueDate !== oldTask.dueDate) {
-            changes.push(`วันครบกำหนด: ${new Date(taskData.dueDate).toLocaleDateString('th-TH')}`);
+            changes.push(`วันครบกำหนด: ${new Date(taskData.dueDate as string).toLocaleDateString('th-TH')}`);
         }
 
         // Update tags if provided

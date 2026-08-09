@@ -28,6 +28,18 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function sanitizeUrl(url: string): string {
+  if (!url) return '#';
+  const trimmed = url.trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  // Allow safe protocols or relative paths/anchors
+  if (
+    /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return '#';
+}
+
 function renderInline(text: string): string {
   let result = escapeHtml(text);
 
@@ -43,16 +55,22 @@ function renderInline(text: string): string {
   // Strikethrough
   result = result.replace(/~~(.+?)~~/g, '<del class="line-through text-gray-500">$1</del>');
 
-  // Links
+  // Links — sanitize href against javascript:/data:/vbscript: schemes
   result = result.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">$1</a>'
+    (_, label, href) => {
+      const safeHref = sanitizeUrl(href);
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">${label}</a>`;
+    }
   );
 
   // Auto-links
   result = result.replace(
     /(?<!["\(])https?:\/\/[^\s<]+/g,
-    '<a href="$&" target="_blank" rel="noopener" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">$&</a>'
+    (url) => {
+      const safeHref = sanitizeUrl(url);
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">${url}</a>`;
+    }
   );
 
   // Checkbox

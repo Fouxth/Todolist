@@ -69,8 +69,13 @@ usersRouter.patch('/:id', authenticate, async (req: AuthRequest, res) => {
         // Whitelist editable fields; password must go through /api/profile/password
         const { name, avatar, department, currentTask, status, role } = req.body;
         const data: Record<string, unknown> = { name, avatar, department, currentTask, status };
-        if (isAdminOrManager && role) {
-            data.role = role;
+        
+        // Strictly restrict role changes to admin only (managers cannot alter roles or elevate users)
+        if (req.userRole === 'admin' && role) {
+            const allowedRoles = ['admin', 'manager', 'developer', 'designer', 'tester'];
+            if (allowedRoles.includes(role)) {
+                data.role = role;
+            }
         }
         Object.keys(data).forEach((key) => data[key] === undefined && delete data[key]);
 

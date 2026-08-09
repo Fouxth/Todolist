@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { emitToUser } from '../lib/socket.js';
+import { emitToUser, emitToUsers } from '../lib/socket.js';
 import { authenticate, type AuthRequest } from '../middleware/auth.js';
+import { canAccessTask } from '../lib/permissions.js';
 
 export const commentsRouter = Router();
 
@@ -11,8 +12,14 @@ commentsRouter.use(authenticate);
 // GET /api/comments/:taskId — get all comments for a task
 commentsRouter.get('/:taskId', async (req: AuthRequest, res) => {
     try {
+        const taskId = req.params.taskId as string;
+        const hasAccess = await canAccessTask(req.userId!, req.userRole || 'developer', taskId);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดูความคิดเห็นในงานนี้' });
+        }
+
         const comments = await prisma.comment.findMany({
-            where: { taskId: req.params.taskId as string },
+            where: { taskId },
             include: {
                 user: { select: { id: true, name: true, avatar: true, role: true } }
             },
@@ -28,14 +35,20 @@ commentsRouter.get('/:taskId', async (req: AuthRequest, res) => {
 // POST /api/comments/:taskId — add comment
 commentsRouter.post('/:taskId', async (req: AuthRequest, res) => {
     try {
+        const taskId = req.params.taskId as string;
         const { content } = req.body;
         if (!content?.trim()) {
             return res.status(400).json({ error: 'กรุณากรอกข้อความ' });
         }
 
+        const hasAccess = await canAccessTask(req.userId!, req.userRole || 'developer', taskId);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์เพิ่มความคิดเห็นในงานนี้' });
+        }
+
         const comment = await prisma.comment.create({
             data: {
-                taskId: req.params.taskId as string,
+                taskId,
                 userId: req.userId!,
                 content: content.trim()
             },
@@ -46,7 +59,7 @@ commentsRouter.post('/:taskId', async (req: AuthRequest, res) => {
 
         // Get task info for notification
         const task = await prisma.task.findUnique({
-            where: { id: req.params.taskId as string },
+            where: { id: taskId },
             include: { assignees: true }
         });
 
@@ -63,8 +76,8 @@ commentsRouter.post('/:taskId', async (req: AuthRequest, res) => {
             });
 
             // Notify task creator + assignees (except commenter)
-            const notifyUserIds = [task.createdBy, ...task.assignees.map((a: any) => a.userId)]
-                .filter((id, i, arr) => id !== req.userId && arr.indexOf(id) === i);
+            const allTaskUserIds = [...new Set([task.createdBy, ...task.assignees.map((a: any) => a.userId)])];
+            const notifyUserIds = allTaskUserIds.filter(id => id !== req.userId);
 
             for (const uid of notifyUserIds) {
                 const notif = await prisma.notification.create({
@@ -79,9 +92,8 @@ commentsRouter.post('/:taskId', async (req: AuthRequest, res) => {
                 emitToUser(uid, 'new_notification', notif);
             }
 
-            // Emit comment to task room
-            const { getIO } = await import('../lib/socket.js');
-            getIO().emit(`task:${task.id}:comment`, comment);
+            // Emit comment event only to users related to this task
+            emitToUsers(allTaskUserIds, `task:${task.id}:comment`, comment);
         }
 
         res.status(201).json(comment);

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { createAndSendNotification, createAndSendNotifications, emitToUser, emitToUsers, emitToAll } from '../lib/socket.js';
 import { sendEmail, taskAssignedEmail } from '../lib/email.js';
 import { authenticate, requireRole, type AuthRequest } from '../middleware/auth.js';
+import { canAccessTask, canEditTask } from '../lib/permissions.js';
 
 export const tasksRouter = Router();
 
@@ -109,14 +110,30 @@ tasksRouter.get('/:id', async (req, res) => {
 // POST /api/tasks - Create task
 tasksRouter.post('/', async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
+        const creatorId = authReq.userId!;
         const { assignees, tags, subtasks, timeTracking, dependencies, ...taskData } = req.body;
+
+        // Force createdBy to current authenticated user ID
+        taskData.createdBy = creatorId;
+
+        // Validate assignees exist in DB
+        let validAssigneeIds: string[] = [];
+        if (Array.isArray(assignees) && assignees.length > 0) {
+            const existingUsers = await prisma.user.findMany({
+                where: { id: { in: assignees.filter((id: unknown) => typeof id === 'string') } },
+                select: { id: true }
+            });
+            validAssigneeIds = existingUsers.map(u => u.id);
+        }
 
         const task = await prisma.task.create({
             data: {
                 ...taskData,
+                createdBy: creatorId,
                 recurring: taskData.recurring || undefined,
-                assignees: assignees?.length ? {
-                    create: assignees.map((userId: string) => ({ userId }))
+                assignees: validAssigneeIds.length ? {
+                    create: validAssigneeIds.map((userId: string) => ({ userId }))
                 } : undefined,
                 tags: tags?.length ? {
                     create: tags.map((tag: string) => ({ tag }))
@@ -155,7 +172,7 @@ tasksRouter.post('/', async (req, res) => {
         // Create activity
         await prisma.activity.create({
             data: {
-                userId: taskData.createdBy,
+                userId: creatorId,
                 action: 'created',
                 targetType: 'task',
                 targetId: task.id,
@@ -164,8 +181,8 @@ tasksRouter.post('/', async (req, res) => {
         });
 
         // Notify assignees
-        const assigneeIds = task.assignees.map(a => a.userId).filter(id => id !== taskData.createdBy);
-        const creator = await prisma.user.findUnique({ where: { id: taskData.createdBy }, select: { name: true } });
+        const assigneeIds = task.assignees.map(a => a.userId).filter(id => id !== creatorId);
+        const creator = await prisma.user.findUnique({ where: { id: creatorId }, select: { name: true } });
         for (const uid of assigneeIds) {
             const notif = await prisma.notification.create({
                 data: {
@@ -217,10 +234,18 @@ tasksRouter.post('/', async (req, res) => {
 // PATCH /api/tasks/:id - Update task
 tasksRouter.patch('/:id', async (req, res) => {
     try {
-        const { assignees, tags, subtasks, timeTracking, dependencies, ...rawData } = req.body;
+        const authReq = req as AuthRequest;
         const taskId = req.params.id;
-        // Use userId from auth middleware (req.userId), fallback to body fields
-        const userId = (req as any).userId || req.body.updatedBy || req.body.createdBy;
+        const userId = authReq.userId!;
+        const userRole = authReq.userRole || 'developer';
+
+        // Check if user is authorized to edit task
+        const hasPermission = await canEditTask(userId, userRole, taskId);
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์แก้ไขงานนี้' });
+        }
+
+        const { assignees, tags, subtasks, timeTracking, dependencies, ...rawData } = req.body;
 
         // Whitelist only fields that exist in the Task Prisma model
         const allowedFields = ['title', 'description', 'status', 'priority', 'projectId',
@@ -240,6 +265,14 @@ tasksRouter.patch('/:id', async (req, res) => {
 
         if (!oldTask) {
             return res.status(404).json({ error: 'Task not found' });
+        }
+
+        const isManagerOrCreator = userRole === 'admin' || userRole === 'manager' || oldTask.createdBy === userId;
+
+        // Non-manager task assignees cannot move task to another project or team
+        if (!isManagerOrCreator) {
+            delete taskData.projectId;
+            delete taskData.teamId;
         }
 
         // Update base task data only if there are fields to update
@@ -463,9 +496,19 @@ tasksRouter.patch('/:id', async (req, res) => {
 // PATCH /api/tasks/:id/status - Move task (change status)
 tasksRouter.patch('/:id/status', async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
+        const taskId = req.params.id;
+        const userId = authReq.userId!;
+        const userRole = authReq.userRole || 'developer';
+
+        const hasPermission = await canEditTask(userId, userRole, taskId);
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์เปลี่ยนสถานะงานนี้' });
+        }
+
         const { status } = req.body;
         const task = await prisma.task.update({
-            where: { id: req.params.id },
+            where: { id: taskId },
             data: {
                 status,
                 completedAt: status === 'done' ? new Date() : null
@@ -844,11 +887,15 @@ tasksRouter.post('/ai/suggest', async (req, res) => {
 // POST /api/tasks/:id/time-tracking/start - Start time tracking
 tasksRouter.post('/:id/time-tracking/start', async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const taskId = req.params.id;
-        const userId = req.body.userId || (req as any).user?.userId;
+        const userId = authReq.userId!;
+        const userRole = authReq.userRole || 'developer';
 
-        if (!userId) {
-            return res.status(401).json({ error: 'User ID required' });
+        // Check task authorization
+        const hasAccess = await canAccessTask(userId, userRole, taskId);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์จับเวลาในงานนี้' });
         }
 
         // Create time tracking if doesn't exist
@@ -900,7 +947,10 @@ tasksRouter.post('/:id/time-tracking/start', async (req, res) => {
 // POST /api/tasks/:id/time-tracking/stop - Stop time tracking
 tasksRouter.post('/:id/time-tracking/stop', async (req, res) => {
     try {
+        const authReq = req as AuthRequest;
         const taskId = req.params.id;
+        const userId = authReq.userId!;
+        const userRole = authReq.userRole;
         const { entryId, description } = req.body;
 
         if (!entryId) {
@@ -915,6 +965,11 @@ tasksRouter.post('/:id/time-tracking/stop', async (req, res) => {
 
         if (!entry || entry.timeTracking.taskId !== taskId) {
             return res.status(404).json({ error: 'Time entry not found' });
+        }
+
+        // Check entry ownership or admin/manager role
+        if (entry.userId !== userId && userRole !== 'admin' && userRole !== 'manager') {
+            return res.status(403).json({ error: 'คุณไม่มีสิทธิ์หยุดการจับเวลาของผู้ใช้อื่น' });
         }
 
         if (entry.endTime) {

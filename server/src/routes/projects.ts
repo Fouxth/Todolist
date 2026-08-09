@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { emitToAll } from '../lib/socket.js';
+import { requireRole, type AuthRequest } from '../middleware/auth.js';
 
 export const projectsRouter = Router();
 
@@ -39,8 +40,9 @@ projectsRouter.get('/', async (_req, res) => {
 // GET /api/projects/:id
 projectsRouter.get('/:id', async (req, res) => {
     try {
+        const id = req.params.id as string;
         const project = await prisma.project.findUnique({
-            where: { id: req.params.id },
+            where: { id },
             include: { teams: true }
         });
         if (!project) {
@@ -54,8 +56,8 @@ projectsRouter.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/projects
-projectsRouter.post('/', async (req, res) => {
+// POST /api/projects (admin, manager)
+projectsRouter.post('/', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
         const { name, description, status, color, progress, startDate, endDate } = req.body;
         if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -82,12 +84,23 @@ projectsRouter.post('/', async (req, res) => {
     }
 });
 
-// PATCH /api/projects/:id
-projectsRouter.patch('/:id', async (req, res) => {
+// PATCH /api/projects/:id (admin, manager)
+projectsRouter.patch('/:id', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const id = req.params.id as string;
+        const { name, description, status, color, progress, startDate, endDate } = req.body;
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = typeof name === 'string' ? name.trim() : name;
+        if (description !== undefined) updateData.description = description;
+        if (status !== undefined) updateData.status = status;
+        if (color !== undefined) updateData.color = color;
+        if (progress !== undefined) updateData.progress = typeof progress === 'number' ? Math.max(0, Math.min(100, progress)) : 0;
+        if (startDate !== undefined) updateData.startDate = new Date(startDate);
+        if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+
         const project = await prisma.project.update({
-            where: { id: req.params.id },
-            data: req.body
+            where: { id },
+            data: updateData
         });
         emitToAll('project:updated', project);
         res.json(project);
@@ -97,13 +110,14 @@ projectsRouter.patch('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/projects/:id
-projectsRouter.delete('/:id', async (req, res) => {
+// DELETE /api/projects/:id (admin, manager)
+projectsRouter.delete('/:id', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const id = req.params.id as string;
         await prisma.project.delete({
-            where: { id: req.params.id }
+            where: { id }
         });
-        emitToAll('project:deleted', { id: req.params.id });
+        emitToAll('project:deleted', { id });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting project:', error);

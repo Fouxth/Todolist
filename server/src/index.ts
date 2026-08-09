@@ -67,6 +67,8 @@ const io = new SocketIOServer(httpServer, {
 // Share io instance globally
 setIO(io);
 
+import { prisma } from './lib/prisma.js';
+
 // Socket authentication & room join
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -85,22 +87,35 @@ io.on('connection', (socket) => {
     socket.join(`user:${userId}`);
     console.log(`🔌 User ${userId} connected (socket ${socket.id})`);
 
-    // Chat room management
-    socket.on('chat:join', (chatId: string) => {
-        socket.join(`chat:${chatId}`);
+    // Chat room management — validate membership before joining or sending typing events
+    socket.on('chat:join', async (chatId: string) => {
+        if (!chatId || typeof chatId !== 'string') return;
+        const member = await prisma.chatMember.findUnique({
+            where: { chatId_userId: { chatId, userId } }
+        });
+        if (member) {
+            socket.join(`chat:${chatId}`);
+        }
     });
 
     socket.on('chat:leave', (chatId: string) => {
+        if (!chatId || typeof chatId !== 'string') return;
         socket.leave(`chat:${chatId}`);
     });
 
-    socket.on('chat:typing', (data: { chatId: string; isTyping: boolean; userName: string }) => {
-        socket.to(`chat:${data.chatId}`).emit('chat:typing', {
-            userId,
-            chatId: data.chatId,
-            userName: data.userName,
-            isTyping: data.isTyping
+    socket.on('chat:typing', async (data: { chatId: string; isTyping: boolean; userName: string }) => {
+        if (!data?.chatId || typeof data.chatId !== 'string') return;
+        const member = await prisma.chatMember.findUnique({
+            where: { chatId_userId: { chatId: data.chatId, userId } }
         });
+        if (member) {
+            socket.to(`chat:${data.chatId}`).emit('chat:typing', {
+                userId,
+                chatId: data.chatId,
+                userName: data.userName,
+                isTyping: data.isTyping
+            });
+        }
     });
 
     socket.on('disconnect', () => {
@@ -141,16 +156,7 @@ app.use(cors({
 app.use(express.json());
 app.use('/api', apiLimiter);
 
-// Static file serving for uploads — force download so stored files (e.g. .html/.svg) can't execute in-browser
-import path from 'path';
-import { fileURLToPath } from 'url';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use('/uploads', express.static(path.resolve(__dirname, '../uploads'), {
-    setHeaders: (res) => {
-        res.setHeader('Content-Disposition', 'attachment');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-    }
-}));
+// File downloads are handled securely with authorization checks in attachmentsRouter: /api/attachments/:id/download
 
 // Routes — auth is public, everything else is protected
 app.use('/api/auth/login', authLimiter);

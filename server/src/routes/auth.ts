@@ -82,8 +82,9 @@ authRouter.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' });
         }
 
-        const allowedRoles = ['developer', 'designer', 'tester', 'manager'];
-        const validRole = allowedRoles.includes(role) ? role : 'developer';
+        // Public registration always assigns default 'developer' role.
+        // Role elevation to manager/admin must be done by an administrator.
+        const validRole = 'developer';
         const normalizedEmail = String(email).trim();
 
         const existing = await prisma.user.findFirst({

@@ -5,6 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
+import { canAccessTask } from '../lib/permissions.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.resolve(__dirname, '../../uploads');
 
@@ -21,10 +23,10 @@ attachmentsRouter.post('/tasks/:taskId/attachments', authenticate, async (req: A
         const taskId = req.params.taskId as string;
         const userId = req.userId!;
 
-        // Check task exists
-        const task = await prisma.task.findUnique({ where: { id: taskId } });
-        if (!task) {
-            res.status(404).json({ error: 'Task not found' });
+        // Check task authorization
+        const hasAccess = await canAccessTask(userId, req.userRole || 'developer', taskId);
+        if (!hasAccess) {
+            res.status(403).json({ error: 'คุณไม่มีสิทธิ์เข้าถึงหรือแนบไฟล์ในงานนี้' });
             return;
         }
 
@@ -111,8 +113,8 @@ attachmentsRouter.post('/tasks/:taskId/attachments', authenticate, async (req: A
     }
 });
 
-// GET /api/attachments/:id/download — Download a file
-attachmentsRouter.get('/attachments/:id/download', async (req, res) => {
+// GET /api/attachments/:id/download — Download a file (requires authentication & authorization)
+attachmentsRouter.get('/attachments/:id/download', authenticate, async (req: AuthRequest, res) => {
     try {
         const id = req.params.id as string;
         const attachment = await prisma.attachment.findUnique({
@@ -121,6 +123,13 @@ attachmentsRouter.get('/attachments/:id/download', async (req, res) => {
 
         if (!attachment) {
             res.status(404).json({ error: 'Attachment not found' });
+            return;
+        }
+
+        // Check task access permission
+        const hasAccess = await canAccessTask(req.userId!, req.userRole || 'developer', attachment.taskId);
+        if (!hasAccess) {
+            res.status(403).json({ error: 'คุณไม่มีสิทธิ์ดาวน์โหลดไฟล์ของงานนี้' });
             return;
         }
 
@@ -134,6 +143,7 @@ attachmentsRouter.get('/attachments/:id/download', async (req, res) => {
 
         res.setHeader('Content-Disposition', `attachment; filename="${attachment.name}"`);
         res.setHeader('Content-Type', attachment.type);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         fs.createReadStream(filePath).pipe(res);
     } catch (error) {
         console.error('Error downloading attachment:', error);

@@ -145,7 +145,23 @@ publicRouter.get('/settings', async (_req, res) => {
             });
         }
         
-        res.json(setting);
+        // Filter out sensitive financial fields (bank, accNum, accName) from public response
+        const publicSettings = setting ? {
+            id: setting.id,
+            name: setting.name,
+            tagline: setting.tagline,
+            website: setting.website,
+            email: setting.email,
+            phone: setting.phone,
+            addr: setting.addr,
+            lineId: setting.lineId,
+            lineQrUrl: setting.lineQrUrl,
+            serviceArea: setting.serviceArea,
+            responseSla: setting.responseSla,
+            currency: setting.currency,
+        } : null;
+
+        res.json(publicSettings);
     } catch (error) {
         console.error('Fetch public system settings error:', error);
         res.status(500).json({ error: 'ไม่สามารถโหลดการตั้งค่าระบบได้' });

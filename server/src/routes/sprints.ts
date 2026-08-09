@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { emitToAll } from '../lib/socket.js';
+import { requireRole, type AuthRequest } from '../middleware/auth.js';
 
 export const sprintsRouter = Router();
 
@@ -44,8 +45,9 @@ sprintsRouter.get('/', async (req, res) => {
 // GET /api/sprints/:id
 sprintsRouter.get('/:id', async (req, res) => {
     try {
+        const sprintId = req.params.id as string;
         const sprint = await prisma.sprint.findUnique({
-            where: { id: req.params.id },
+            where: { id: sprintId },
             include: {
                 tasks: {
                     include: {
@@ -71,8 +73,8 @@ sprintsRouter.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/sprints - create sprint
-sprintsRouter.post('/', async (req, res) => {
+// POST /api/sprints - create sprint (admin, manager)
+sprintsRouter.post('/', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
         const { name, description, projectId, goal, startDate, endDate, status } = req.body;
         const sprint = await prisma.sprint.create({
@@ -94,9 +96,10 @@ sprintsRouter.post('/', async (req, res) => {
     }
 });
 
-// PATCH /api/sprints/:id - update sprint
-sprintsRouter.patch('/:id', async (req, res) => {
+// PATCH /api/sprints/:id - update sprint (admin, manager)
+sprintsRouter.patch('/:id', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const sprintId = req.params.id as string;
         const { name, description, goal, startDate, endDate, status } = req.body;
         const data: Record<string, unknown> = {};
         if (name !== undefined) data.name = name;
@@ -107,7 +110,7 @@ sprintsRouter.patch('/:id', async (req, res) => {
         if (status !== undefined) data.status = status;
 
         const sprint = await prisma.sprint.update({
-            where: { id: req.params.id },
+            where: { id: sprintId },
             data,
             include: {
                 tasks: {
@@ -134,16 +137,17 @@ sprintsRouter.patch('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/sprints/:id
-sprintsRouter.delete('/:id', async (req, res) => {
+// DELETE /api/sprints/:id (admin, manager)
+sprintsRouter.delete('/:id', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const sprintId = req.params.id as string;
         // Unset sprintId on tasks first
         await prisma.task.updateMany({
-            where: { sprintId: req.params.id },
+            where: { sprintId },
             data: { sprintId: null }
         });
-        await prisma.sprint.delete({ where: { id: req.params.id } });
-        emitToAll('sprint:deleted', { id: req.params.id });
+        await prisma.sprint.delete({ where: { id: sprintId } });
+        emitToAll('sprint:deleted', { id: sprintId });
         res.json({ success: true });
     } catch (error) {
         console.error('Error deleting sprint:', error);
@@ -151,13 +155,14 @@ sprintsRouter.delete('/:id', async (req, res) => {
     }
 });
 
-// POST /api/sprints/:id/tasks - add tasks to sprint
-sprintsRouter.post('/:id/tasks', async (req, res) => {
+// POST /api/sprints/:id/tasks - add tasks to sprint (admin, manager)
+sprintsRouter.post('/:id/tasks', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const sprintId = req.params.id as string;
         const { taskIds } = req.body;
         await prisma.task.updateMany({
             where: { id: { in: taskIds } },
-            data: { sprintId: req.params.id }
+            data: { sprintId }
         });
         res.json({ success: true });
     } catch (error) {
@@ -166,12 +171,13 @@ sprintsRouter.post('/:id/tasks', async (req, res) => {
     }
 });
 
-// DELETE /api/sprints/:id/tasks - remove tasks from sprint
-sprintsRouter.delete('/:id/tasks', async (req, res) => {
+// DELETE /api/sprints/:id/tasks - remove tasks from sprint (admin, manager)
+sprintsRouter.delete('/:id/tasks', requireRole('admin', 'manager'), async (req: AuthRequest, res) => {
     try {
+        const sprintId = req.params.id as string;
         const { taskIds } = req.body;
         await prisma.task.updateMany({
-            where: { id: { in: taskIds }, sprintId: req.params.id },
+            where: { id: { in: taskIds }, sprintId },
             data: { sprintId: null }
         });
         res.json({ success: true });
